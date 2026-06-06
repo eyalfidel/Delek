@@ -18,7 +18,7 @@
 <body>
 
     <div class="card">
-        <h2>בדיקת חיבור למערכת ⛽</h2>
+        <h2>בדיקת חיבור למערכת 🍊</h2>
         
         <div id="logged-out-view">
             <p>אנא התחברי כדי להמשיך</p>
@@ -42,13 +42,25 @@
 
         // פונקציית התחברות
         async function login() {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
+            // הוספנו Alert כדי לוודא שהכפתור באמת מגיב
+            alert("הכפתור נלחץ! מתחיל ניסיון התחברות מול Supabase...");
+            
+            try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin
+                    }
+                });
+                
+                if (error) {
+                    alert("קרתה שגיאה מול Supabase: " + error.message);
+                    console.error("שגיאת התחברות:", error);
                 }
-            });
-            if (error) console.error("שגיאת התחברות:", error);
+            } catch (err) {
+                alert("שגיאה כללית בקוד: " + err.message);
+                console.error(err);
+            }
         }
 
         // פונקציית התנתקות
@@ -63,7 +75,7 @@
             const { data: { session } } = await supabase.auth.getSession();
             
             if (session && session.user) {
-                // משתמשת מחוברת: מסתירים את מסך ההתחברות ומציגים את אזור הפרופיל
+                // משתמשת מחוברת
                 document.getElementById('logged-out-view').classList.add('hidden');
                 document.getElementById('logged-in-view').classList.remove('hidden');
                 
@@ -77,7 +89,7 @@
             }
         }
 
-        // האזנה לשינויים במצב ההתחברות (למשל כשחוזרים מגוגל אחרי אישור)
+        // האזנה לשינויים במצב ההתחברות
         supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
                 checkUser();
