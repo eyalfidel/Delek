@@ -5,7 +5,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let currentCar = null;
 let currentCarMembers = [];
-let calculatedOdometer = 0; // מד אוץ משוער שמנוהל ברקע
+let calculatedOdometer = 0; 
 
 async function login() { await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }); }
 async function logout() { await supabaseClient.auth.signOut(); showScreen('login-screen'); }
@@ -55,7 +55,6 @@ async function loadUserCars() {
     const listDiv = document.getElementById('my-cars-list');
     listDiv.innerHTML = 'טוען רכבים...';
 
-    // קליטת הזמנות
     try {
         const { data: invites } = await supabaseClient.from('invitations').select('*').eq('invited_email', currentUser.email.toLowerCase());
         if (invites && invites.length > 0) {
@@ -112,7 +111,6 @@ function backToCars() {
     showScreen('cars-screen');
 }
 
-// עדכון התצוגה של טופס נסיעה
 function toggleTripInput() {
     const type = document.getElementById('trip-input-type').value;
     if(type === 'distance') {
@@ -125,7 +123,7 @@ function toggleTripInput() {
 }
 
 function prepareTripForm() {
-    document.getElementById('current-odo-hint').innerText = `מד אוץ אחרון ידוע: ${calculatedOdometer}`;
+    document.getElementById('current-odo-hint').innerText = `מד אוץ אחרון ידוע: ${calculatedOdometer.toFixed(0)}`;
     
     const participantsDiv = document.getElementById('trip-participants-list');
     participantsDiv.innerHTML = '';
@@ -141,20 +139,70 @@ function prepareTripForm() {
     });
 }
 
+// ניהול סליקה והעברות כספים
+function showSettleForm() {
+    let options = '<option value="">בחרי למי להעביר</option>';
+    currentCarMembers.forEach(m => {
+        if(m.profiles.id !== currentUser.id) {
+            options += `<option value="${m.profiles.id}">${m.profiles.display_name}</option>`;
+        }
+    });
+    document.getElementById('settle-paid-to').innerHTML = options;
+    document.getElementById('settle-form-container').classList.remove('hidden');
+}
+
+function hideSettleForm() {
+    document.getElementById('settle-form-container').classList.add('hidden');
+    document.getElementById('settle-amount').value = '';
+}
+
+async function submitSettlement() {
+    const paidTo = document.getElementById('settle-paid-to').value;
+    const amount = parseFloat(document.getElementById('settle-amount').value);
+    
+    if(!paidTo || !amount || amount <= 0) return alert("נא לבחור שותפה ולהזין סכום תקין");
+    
+    const { error } = await supabaseClient.from('settlements').insert({
+        group_id: currentCar.id,
+        paid_by: currentUser.id,
+        paid_to: paidTo,
+        amount: amount
+    });
+    
+    if(error) return alert("שגיאה בשמירת ההעברה: " + error.message);
+    
+    alert("העברת הכסף נשמרה בהצלחה!");
+    hideSettleForm();
+    loadDashboardData();
+}
+
 async function loadDashboardData() {
     if(!currentCar) return;
 
-    const { data: refuels } = await supabaseClient.from('refuels').select('*').eq('group_id', currentCar.id).order('created_at', { ascending: false });
+    const { data: refuels } = await supabaseClient.from('refuels').select('*, profiles(display_name)').eq('group_id', currentCar.id).order('created_at', { ascending: false });
     const { data: trips } = await supabaseClient.from('trips').select('*, profiles(display_name)').eq('group_id', currentCar.id).order('created_at', { ascending: false });
     const { data: members } = await supabaseClient.from('group_members').select('profiles(id, display_name, email)').eq('group_id', currentCar.id);
     const { data: participants } = await supabaseClient.from('trip_participants').select('*');
+    const { data: settlements } = await supabaseClient.from('settlements').select('*').eq('group_id', currentCar.id).order('created_at', { ascending: false });
 
     currentCarMembers = members || [];
     const safeRefuels = refuels || [];
     const safeTrips = trips || [];
     const safeParticipants = participants || [];
+    const safeSettlements = settlements || [];
 
-    // חישוב מד אוץ נוכחי
+    // עדכון רשימת השותפות
+    const membersHTML = currentCarMembers.map(m => {
+        const profile = m.profiles;
+        if (profile.id === currentUser.id) {
+            return `<div style="margin-bottom: 5px;"><strong style="color: var(--primary);">את/ה</strong> <span style="font-size: 0.85em; color: var(--text-light);">(${profile.display_name || 'ללא כינוי'})</span></div>`;
+        } else {
+            return `<div style="margin-bottom: 5px;"><strong>${profile.display_name || 'ללא כינוי'}</strong> <span style="font-size: 0.85em; color: var(--text-light); direction: ltr; display: inline-block;">(${profile.email})</span></div>`;
+        }
+    }).join('');
+    document.getElementById('dash-members-list').innerHTML = membersHTML;
+
+    // חישוב מד אוץ
     let lastRefuelOdo = safeRefuels.length > 0 ? safeRefuels[0].odometer : currentCar.initial_odo;
     let tripsSinceRefuel = 0;
     const lastRefuelDate = safeRefuels.length > 0 ? new Date(safeRefuels[0].created_at) : new Date(0);
@@ -167,24 +215,27 @@ async function loadDashboardData() {
     calculatedOdometer = lastRefuelOdo + tripsSinceRefuel;
     document.getElementById('dash-current-odo').innerText = calculatedOdometer.toFixed(0);
 
-    // חישובים כלכליים וקילומטרים (מתחשב בחלוקה למספר משתתפים בנסיעה)
+    // עיבוד כספים וקילומטרים
     let totalCost = 0, totalTripsKm = 0;
     let paymentsByUser = {}, kmByUser = {};
 
     currentCarMembers.forEach(m => {
-        paymentsByUser[m.profiles.id] = { name: m.profiles.display_name, paid: 0 };
+        paymentsByUser[m.profiles.id] = { name: m.profiles.display_name, fuelPaid: 0, setPaid: 0, setReceived: 0 };
         kmByUser[m.profiles.id] = { name: m.profiles.display_name, km: 0 };
     });
 
     safeRefuels.forEach(r => {
         totalCost += Number(r.cost);
-        if(paymentsByUser[r.paid_by]) paymentsByUser[r.paid_by].paid += Number(r.cost);
+        if(paymentsByUser[r.paid_by]) paymentsByUser[r.paid_by].fuelPaid += Number(r.cost);
+    });
+
+    safeSettlements.forEach(s => {
+        if(paymentsByUser[s.paid_by]) paymentsByUser[s.paid_by].setPaid += Number(s.amount);
+        if(paymentsByUser[s.paid_to]) paymentsByUser[s.paid_to].setReceived += Number(s.amount);
     });
 
     safeTrips.forEach(t => {
         totalTripsKm += Number(t.distance);
-        
-        // מציאת כל מי שהשתתף בנסיעה הספציפית
         let tripParts = safeParticipants.filter(p => p.trip_id === t.id);
         if(tripParts.length > 0) {
             let splitDistance = Number(t.distance) / tripParts.length;
@@ -192,7 +243,6 @@ async function loadDashboardData() {
                 if(kmByUser[p.user_id]) kmByUser[p.user_id].km += splitDistance;
             });
         } else {
-            // תאימות לאחור: אם אין משתתפים מתועדים, הכל הולך למי שרשמה
             if(kmByUser[t.recorded_by]) kmByUser[t.recorded_by].km += Number(t.distance);
         }
     });
@@ -202,45 +252,69 @@ async function loadDashboardData() {
     document.getElementById('dash-avg-cost').innerText = totalTripsKm > 0 ? `₪${avgCostPerKm.toFixed(2)}` : '0';
     document.getElementById('dash-total-km').innerText = totalTripsKm.toFixed(1);
 
-    // טבלת התחשבנות - הטור "שותפה" אחרון
-    let balanceHTML = '<table><tr><th>מצב</th><th>נסעה (ק"מ)</th><th>שילמה</th><th>שותפה</th></tr>';
+    // טבלת התחשבנות
+    let balanceHTML = '<table><tr><th>שותפה</th><th>שילמה דלק</th><th>נסעה (ק"מ)</th><th>מצב כולל</th></tr>';
     currentCarMembers.forEach(m => {
         let id = m.profiles.id;
         let displayName = id === currentUser.id ? 'את/ה' : (m.profiles.display_name || 'אנונימית');
-        let finalBalance = paymentsByUser[id].paid - (kmByUser[id].km * avgCostPerKm);
-        let color = finalBalance >= 0 ? 'var(--success)' : 'var(--danger)';
         
+        let userKm = kmByUser[id].km;
+        let fuelPaid = paymentsByUser[id].fuelPaid;
+        let setPaid = paymentsByUser[id].setPaid;
+        let setReceived = paymentsByUser[id].setReceived;
+        
+        let userOwesForFuel = userKm * avgCostPerKm;
+        // מצב כולל = דלק ששילמה - חובה על דלק + העברות שנתנה - העברות שקיבלה
+        let finalBalance = fuelPaid - userOwesForFuel + setPaid - setReceived; 
+        
+        let color = finalBalance >= 0 ? 'var(--success)' : 'var(--danger)';
         balanceHTML += `<tr>
-            <td style="color: ${color}; font-weight:bold; direction:ltr;">${finalBalance > 0 ? '+' : ''}${finalBalance.toFixed(0)}₪</td>
-            <td>${kmByUser[id].km.toFixed(1)}</td>
-            <td>₪${paymentsByUser[id].paid.toFixed(0)}</td>
             <td>${displayName}</td>
+            <td>₪${fuelPaid.toFixed(0)}</td>
+            <td>${userKm.toFixed(1)}</td>
+            <td style="color: ${color}; font-weight:bold; direction:ltr;">${finalBalance > 0 ? '+' : ''}${finalBalance.toFixed(0)}₪</td>
         </tr>`;
     });
     balanceHTML += '</table>';
-    document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים.</p>';
+    document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים לחשב.</p>';
 
-    // טבלת נסיעות אחרונות - הוספנו מד אוץ סופי, והערה
-    let tripsHTML = '<table><tr><th>מד אוץ סופי</th><th>מרחק</th><th>הערה</th><th>נהגת</th><th>תאריך</th></tr>';
-    safeTrips.slice(0, 8).forEach(t => {
+    // טבלת קיזוזים
+    let setHTML = '<table><tr><th>תאריך</th><th>מעבירה</th><th>מקבלת</th><th>סכום</th></tr>';
+    safeSettlements.slice(0, 5).forEach(s => {
+        let byName = currentCarMembers.find(m => m.profiles.id === s.paid_by)?.profiles?.display_name || 'אנונימית';
+        let toName = currentCarMembers.find(m => m.profiles.id === s.paid_to)?.profiles?.display_name || 'אנונימית';
+        if(s.paid_by === currentUser.id) byName = 'את/ה';
+        if(s.paid_to === currentUser.id) toName = 'את/ה';
+        let date = new Date(s.created_at).toLocaleDateString('he-IL');
+        setHTML += `<tr><td>${date}</td><td>${byName}</td><td>${toName}</td><td>₪${s.amount}</td></tr>`;
+    });
+    setHTML += '</table>';
+    document.getElementById('dash-settlements-list').innerHTML = safeSettlements.length > 0 ? setHTML : '<p>אין העברות עדיין.</p>';
+
+    // טבלת תדלוקים
+    let refuelsHTML = '<table><tr><th>תאריך</th><th>מתדלקת</th><th>עלות</th><th>ליטרים</th><th>מד אוץ</th></tr>';
+    safeRefuels.slice(0, 5).forEach(r => {
+        let date = new Date(r.created_at).toLocaleDateString('he-IL');
+        let displayName = r.profiles?.display_name || '';
+        if (r.paid_by === currentUser.id) displayName = 'את/ה';
+        refuelsHTML += `<tr><td>${date}</td><td>${displayName}</td><td>₪${r.cost}</td><td>${r.liters}</td><td>${r.odometer}</td></tr>`;
+    });
+    refuelsHTML += '</table>';
+    document.getElementById('dash-refuels-list').innerHTML = safeRefuels.length > 0 ? refuelsHTML : '<p>אין תדלוקים.</p>';
+
+    // טבלת נסיעות
+    let tripsHTML = '<table><tr><th>תאריך</th><th>נהגת</th><th>מרחק</th><th>מד אוץ</th><th>הערה</th></tr>';
+    safeTrips.slice(0, 5).forEach(t => {
         let date = new Date(t.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit'});
         let displayName = t.recorded_by === currentUser.id ? 'את/ה' : (t.profiles?.display_name || '');
         let endOdoDisplay = t.end_odo ? t.end_odo : '-';
         let noteDisplay = t.note ? t.note : '-';
-        
-        tripsHTML += `<tr>
-            <td>${endOdoDisplay}</td>
-            <td>${t.distance}</td>
-            <td>${noteDisplay}</td>
-            <td>${displayName}</td>
-            <td>${date}</td>
-        </tr>`;
+        tripsHTML += `<tr><td>${date}</td><td>${displayName}</td><td>${t.distance}</td><td>${endOdoDisplay}</td><td>${noteDisplay}</td></tr>`;
     });
     tripsHTML += '</table>';
     document.getElementById('dash-trips-list').innerHTML = safeTrips.length > 0 ? tripsHTML : '<p>אין נסיעות.</p>';
 }
 
-// שמירת נסיעה חדשה עם משתתפים ובדיקות תקינות
 async function saveTrip() {
     let distance = 0;
     let endOdo = null;
@@ -257,7 +331,7 @@ async function saveTrip() {
             if(!confirm(`זהירות: מד האוץ שהזנת (${endOdo}) נמוך ממד האוץ הנוכחי המחושב (${calculatedOdometer}). בטוחה שזה נכון?`)) return;
         }
         distance = endOdo - calculatedOdometer;
-        if(distance < 0) distance = 0; // מניעת מרחק שלילי בטעות משתמש
+        if(distance < 0) distance = 0; 
     }
 
     if(distance > 200) {
@@ -266,7 +340,6 @@ async function saveTrip() {
 
     const note = document.getElementById('trip-note').value.trim();
 
-    // איסוף משתתפות שסומנו ב-V
     let selectedParticipants = [];
     currentCarMembers.forEach(m => {
         const checkbox = document.getElementById(`part-${m.profiles.id}`);
@@ -275,7 +348,6 @@ async function saveTrip() {
 
     if(selectedParticipants.length === 0) return alert("חייבת לבחור לפחות משתתפת אחת בנסיעה");
 
-    // שמירה לטבלת trips
     const { data: newTrip, error } = await supabaseClient.from('trips').insert({ 
         group_id: currentCar.id, 
         recorded_by: currentUser.id, 
@@ -286,7 +358,6 @@ async function saveTrip() {
 
     if (error) return alert("שגיאה בשמירה: " + error.message);
     
-    // שמירה לטבלת המשתתפים
     const participantsData = selectedParticipants.map(userId => ({ trip_id: newTrip.id, user_id: userId }));
     await supabaseClient.from('trip_participants').insert(participantsData);
 
@@ -304,14 +375,31 @@ async function saveRefuel() {
 
     if (!cost || !liters || !odo) return alert("נא למלא את כל השדות");
     
-    if(odo < calculatedOdometer) {
+    // מנגנון השלמת פער ("הנסיעה לתחנה")
+    let gap = odo - calculatedOdometer;
+    if(gap > 0.5) { // מתעלם ממעגלי מספרים קטנים
+        let addTrip = confirm(`שמנו לב שמד האוץ החדש שהזנת גבוה ב-${gap.toFixed(1)} ק"מ מהחישוב שלנו.\nהאם תרצי שנוסיף את הפער הזה אוטומטית כ"נסיעה לתחנה" על שמך?`);
+        if(addTrip) {
+            const { data: newTrip, error: tripErr } = await supabaseClient.from('trips').insert({ 
+                group_id: currentCar.id, 
+                recorded_by: currentUser.id, 
+                distance: gap, 
+                end_odo: odo, 
+                note: "השלמה אוטומטית (נסיעה לתחנה)" 
+            }).select().single();
+            
+            if(newTrip) {
+                await supabaseClient.from('trip_participants').insert({trip_id: newTrip.id, user_id: currentUser.id});
+            }
+        }
+    } else if(gap < -0.5) {
         if(!confirm(`זהירות: מד האוץ שהזנת (${odo}) נמוך מהמד המחושב שלנו (${calculatedOdometer}). להמשיך?`)) return;
     }
 
     const { error } = await supabaseClient.from('refuels').insert({ group_id: currentCar.id, paid_by: currentUser.id, cost: cost, liters: liters, odometer: odo });
-    if (error) return alert("שגיאה בשמירה: " + error.message);
+    if (error) return alert("שגיאה בשמירת התדלוק: " + error.message);
     
-    alert("נשמר בהצלחה!");
+    alert("התדלוק נשמר בהצלחה!");
     document.getElementById('refuel-cost').value = ''; document.getElementById('refuel-liters').value = ''; document.getElementById('refuel-odo').value = '';
     switchView('dashboard', document.querySelector('.bottom-nav .nav-item')); 
 }
