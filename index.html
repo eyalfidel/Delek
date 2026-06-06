@@ -2,51 +2,90 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <!-- הגדרה קריטית למובייל ולאייפון בפרט: מונעת זום רנדומלי ומתאימה את התצוגה למסך -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>מעקב דלק - בבנייה</title>
+    <title>טסט התחברות</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f3f4f6;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-            color: #374151;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            width: 85%;
-            max-width: 400px;
-        }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #1f2937;
-        }
-        p {
-            font-size: 1.1rem;
-            line-height: 1.5;
-        }
-        .emoji {
-            font-size: 3.5rem;
-            margin-bottom: 1rem;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f3f4f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; color: #374151; }
+        .card { background: white; padding: 2.5rem 2rem; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 85%; max-width: 350px; }
+        h2 { margin-top: 0; color: #1f2937; }
+        button { background: #4285f4; color: white; border: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin-top: 20px; width: 100%; font-weight: bold; }
+        button.logout { background: #ef4444; }
+        .hidden { display: none; }
+        #user-email { font-size: 0.9rem; color: #6b7280; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="emoji">⛽🚧🚗</div>
-        <h1>מעקב הדלק שלכן בבנייה!</h1>
-        <p>המערכת מתחממת...<br>בקרוב תוכלו להתחיל לעקוב מי נסעה, כמה, ולמי היא חייבת כסף 😅</p>
+
+    <div class="card">
+        <h2>בדיקת חיבור למערכת ⛽</h2>
+        
+        <div id="logged-out-view">
+            <p>אנא התחברי כדי להמשיך</p>
+            <button onclick="login()">התחברי עם Google</button>
+        </div>
+
+        <div id="logged-in-view" class="hidden">
+            <p>היי <strong id="user-name"></strong>! 👋</p>
+            <p id="user-email"></p>
+            <button class="logout" onclick="logout()">התנתקות</button>
+        </div>
     </div>
+
+    <script>
+        // הגדרות חיבור ל-Supabase
+        const SUPABASE_URL = 'https://oaapgalsprualadbfltv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYXBnYWxzcHJ1YWxhZGJmbHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTQ0ODAsImV4cCI6MjA5NjMzMDQ4MH0.JP50HnTaKMg8gv38_tu81gcbTvGEhb6qY1pVzDq5XtE'; // <<< להחליף את זה!
+
+        // אתחול החיבור
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // פונקציית התחברות
+        async function login() {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (error) console.error("שגיאת התחברות:", error);
+        }
+
+        // פונקציית התנתקות
+        async function logout() {
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error("שגיאת התנתקות:", error);
+            checkUser(); // רענון התצוגה
+        }
+
+        // פונקציה שבודקת אם המשתמשת מחוברת ומשנה את התצוגה בהתאם
+        async function checkUser() {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session && session.user) {
+                // משתמשת מחוברת: מסתירים את מסך ההתחברות ומציגים את אזור הפרופיל
+                document.getElementById('logged-out-view').classList.add('hidden');
+                document.getElementById('logged-in-view').classList.remove('hidden');
+                
+                // שליפת השם והאימייל מגוגל
+                document.getElementById('user-name').innerText = session.user.user_metadata.full_name || 'משתמש/ת';
+                document.getElementById('user-email').innerText = session.user.email;
+            } else {
+                // משתמשת מנותקת
+                document.getElementById('logged-out-view').classList.remove('hidden');
+                document.getElementById('logged-in-view').classList.add('hidden');
+            }
+        }
+
+        // האזנה לשינויים במצב ההתחברות (למשל כשחוזרים מגוגל אחרי אישור)
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN') {
+                checkUser();
+            }
+        });
+
+        // הפעלת הבדיקה הראשונית מיד כשהעמוד נטען
+        checkUser();
+    </script>
 </body>
 </html>
