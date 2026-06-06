@@ -3,104 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>טסט התחברות</title>
+    <title>מעקב דלק 🍌</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f3f4f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; color: #374151; }
-        .card { background: white; padding: 2.5rem 2rem; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 85%; max-width: 350px; }
-        h2 { margin-top: 0; color: #1f2937; }
-        button { background: #4285f4; color: white; border: none; padding: 12px 20px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin-top: 20px; width: 100%; font-weight: bold; }
-        button.logout { background: #ef4444; }
-        .hidden { display: none; }
-        #user-email { font-size: 0.9rem; color: #6b7280; margin-top: 5px; }
+        :root {
+            --primary: #4285f4;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Typography & Globals */
+        h1, h2, h3 { margin: 0 0 10px 0; }
+        .hidden { display: none !important; }
+        
+        /* Login Screen */
+        #login-screen {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 1.1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        
+        /* App Layout */
+        #app-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .header {
+            background: var(--surface);
+            padding: 15px 20px;
+            padding-top: max(15px, env(safe-area-inset-top)); /* תמיכה באייפון */
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout-btn {
+            background: #ef4444;
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            width: auto;
+            margin: 0;
+            border-radius: 8px;
+        }
+        
+        /* Views */
+        .view-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 90px; /* מקום לתפריט התחתון */
+        }
+        .form-group {
+            margin-bottom: 15px;
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group input { width: 20px; height: 20px; }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-light);
+            background: none;
+            width: auto;
+            margin: 0;
+            padding: 5px 15px;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 1.5rem; margin-bottom: 4px; }
+        .nav-text { font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>בדיקת חיבור למערכת 🍎</h2>
-        
-        <div id="logged-out-view">
+    <div id="login-screen">
+        <div class="card">
+            <h2>מעקב דלק 🍌</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
+    </div>
 
-        <div id="logged-in-view" class="hidden">
-            <p>היי <strong id="user-name"></strong>! 👋</p>
-            <p id="user-email"></p>
-            <button class="logout" onclick="logout()">התנתקות</button>
-        </div>
+    <div id="app-screen" class="hidden">
+        
+        <header class="header">
+            <div>
+                <strong id="user-greeting">שלום!</strong>
+            </div>
+            <button class="logout-btn" onclick="logout()">התנתקות</button>
+        </header>
+
+        <main class="view-container">
+            
+            <div id="view-dashboard" class="app-view">
+                <h2>מצב נוכחי</h2>
+                <div class="form-group">
+                    <p>כאן יופיעו בהמשך יתרות החובות שלך ושאר האחיות, סטטוס מד האוץ הנוכחי, והתראות על קילומטרים חסרים.</p>
+                </div>
+            </div>
+
+            <div id="view-trip" class="app-view hidden">
+                <h2>תיעוד נסיעה 🚗</h2>
+                <div class="form-group">
+                    <label>מרחק שנסעת (בק"מ):</label>
+                    <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="trip-alone" checked>
+                    <label>נסעתי לבד</label>
+                </div>
+                <button onclick="saveTrip()">שמירת נסיעה</button>
+            </div>
+
+            <div id="view-refuel" class="app-view hidden">
+                <h2>תיעוד תדלוק ⛽</h2>
+                <div class="form-group">
+                    <label>כמה שילמת? (₪)</label>
+                    <input type="number" id="refuel-cost" placeholder="למשל: 250">
+                </div>
+                <div class="form-group">
+                    <label>כמה ליטרים?</label>
+                    <input type="number" id="refuel-liters" placeholder="למשל: 35.2" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>מד אוץ נוכחי (קילומטרז'):</label>
+                    <input type="number" id="refuel-odo" placeholder="קריאת השעון ברכב">
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="refuel-full" checked>
+                    <label>מילאתי מיכל מלא</label>
+                </div>
+                <button onclick="saveRefuel()">שמירת תדלוק</button>
+            </div>
+
+        </main>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="switchView('dashboard', this)">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">מצב</span>
+            </div>
+            <div class="nav-item" onclick="switchView('trip', this)">
+                <span class="nav-icon">🚗</span>
+                <span class="nav-text">נסיעה</span>
+            </div>
+            <div class="nav-item" onclick="switchView('refuel', this)">
+                <span class="nav-icon">⛽</span>
+                <span class="nav-text">תדלוק</span>
+            </div>
+        </nav>
     </div>
 
     <script>
         // הגדרות חיבור ל-Supabase
         const SUPABASE_URL = 'https://oaapgalsprualadbfltv.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYXBnYWxzcHJ1YWxhZGJmbHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTQ0ODAsImV4cCI6MjA5NjMzMDQ4MH0.JP50HnTaKMg8gv38_tu81gcbTvGEhb6qY1pVzDq5XtE';
-
-        // אתחול החיבור - תוקן שם המשתנה כדי למנוע התנגשות
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentGroupId = null;
 
         // פונקציית התחברות
         async function login() {
-            alert("הכפתור נלחץ! מתחיל ניסיון התחברות מול Supabase...");
-            
-            try {
-                const { error } = await supabaseClient.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                        redirectTo: window.location.origin
-                    }
-                });
-                
-                if (error) {
-                    alert("קרתה שגיאה מול Supabase: " + error.message);
-                    console.error("שגיאת התחברות:", error);
-                }
-            } catch (err) {
-                alert("שגיאה כללית בקוד: " + err.message);
-                console.error(err);
-            }
+            await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } });
         }
 
         // פונקציית התנתקות
         async function logout() {
-            const { error } = await supabaseClient.auth.signOut();
-            if (error) console.error("שגיאת התנתקות:", error);
-            checkUser(); // רענון התצוגה
+            await supabaseClient.auth.signOut();
+            document.getElementById('app-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
         }
 
-        // פונקציה שבודקת אם המשתמשת מחוברת ומשנה את התצוגה בהתאם
-        async function checkUser() {
+        // מעבר בין המסכים השונים (ניווט)
+        function switchView(viewName, navElement) {
+            // הסתרת כל המסכים
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            // הסרת צבע מהתפריט
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            // הצגת המסך המבוקש וצביעת הכפתור
+            document.getElementById('view-' + viewName).classList.remove('hidden');
+            navElement.classList.add('active');
+        }
+
+        // משיכת פרטי משתמשת והכנת קבוצה אם חסרה
+        async function initializeApp(user) {
+            currentUser = user;
+            document.getElementById('user-greeting').innerText = 'שלום ' + (user.user_metadata.full_name || '');
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+
             try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                // 1. שמירת הפרופיל בטבלת profiles (אם לא קיים)
+                await supabaseClient.from('profiles').upsert({ 
+                    id: user.id, 
+                    display_name: user.user_metadata.full_name, 
+                    email: user.email 
+                });
+
+                // 2. בדיקה האם המשתמשת משויכת לרכב
+                const { data: member } = await supabaseClient.from('group_members').select('group_id').eq('user_id', user.id).maybeSingle();
                 
-                if (session && session.user) {
-                    // משתמשת מחוברת
-                    document.getElementById('logged-out-view').classList.add('hidden');
-                    document.getElementById('logged-in-view').classList.remove('hidden');
-                    
-                    // שליפת השם והאימייל מגוגל
-                    document.getElementById('user-name').innerText = session.user.user_metadata.full_name || 'משתמש/ת';
-                    document.getElementById('user-email').innerText = session.user.email;
+                if (member) {
+                    currentGroupId = member.group_id;
                 } else {
-                    // משתמשת מנותקת
-                    document.getElementById('logged-out-view').classList.remove('hidden');
-                    document.getElementById('logged-in-view').classList.add('hidden');
+                    // יצירת רכב חדש ושיוך המשתמשת אליו (לצורכי פיתוח ראשוני)
+                    const { data: newGroup } = await supabaseClient.from('car_groups').insert({}).select().single();
+                    await supabaseClient.from('group_members').insert({ group_id: newGroup.id, user_id: user.id });
+                    currentGroupId = newGroup.id;
                 }
             } catch (err) {
-                console.error("שגיאה בבדיקת משתמש:", err);
+                console.error("שגיאה באתחול הנתונים:", err);
             }
         }
 
-        // האזנה לשינויים במצב ההתחברות
+        // שמירת נסיעה חדשה למסד הנתונים
+        async function saveTrip() {
+            const distance = document.getElementById('trip-distance').value;
+            if (!distance || distance <= 0) return alert("נא להזין מרחק תקין");
+
+            const btn = event.target;
+            btn.innerText = "שומר...";
+            btn.disabled = true;
+
+            const { error } = await supabaseClient.from('trips').insert({
+                group_id: currentGroupId,
+                recorded_by: currentUser.id,
+                distance: parseFloat(distance)
+            });
+
+            btn.innerText = "שמירת נסיעה";
+            btn.disabled = false;
+
+            if (error) {
+                alert("שגיאה בשמירה: " + error.message);
+            } else {
+                alert("הנסיעה נשמרה בהצלחה!");
+                document.getElementById('trip-distance').value = ''; // ניקוי השדה
+            }
+        }
+
+        // שמירת תדלוק חדש למסד הנתונים
+        async function saveRefuel() {
+            const cost = document.getElementById('refuel-cost').value;
+            const liters = document.getElementById('refuel-liters').value;
+            const odo = document.getElementById('refuel-odo').value;
+            const isFull = document.getElementById('refuel-full').checked;
+
+            if (!cost || !liters || !odo) return alert("נא למלא את כל השדות");
+
+            const btn = event.target;
+            btn.innerText = "שומר...";
+            btn.disabled = true;
+
+            const { error } = await supabaseClient.from('refuels').insert({
+                group_id: currentGroupId,
+                paid_by: currentUser.id,
+                cost: parseFloat(cost),
+                liters: parseFloat(liters),
+                odometer: parseFloat(odo),
+                is_full: isFull
+            });
+
+            btn.innerText = "שמירת תדלוק";
+            btn.disabled = false;
+
+            if (error) {
+                alert("שגיאה בשמירה: " + error.message);
+            } else {
+                alert("התדלוק נשמר בהצלחה!");
+                document.getElementById('refuel-cost').value = '';
+                document.getElementById('refuel-liters').value = '';
+                document.getElementById('refuel-odo').value = '';
+            }
+        }
+
+        // מאזין לשינויים בהתחברות וטוען את המערכת
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                checkUser();
+            if (event === 'SIGNED_IN' && session) {
+                initializeApp(session.user);
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                currentGroupId = null;
             }
         });
 
-        // הפעלת הבדיקה הראשונית מיד כשהעמוד נטען
-        checkUser();
+        // בדיקה ראשונית כשהעמוד נטען
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            if (session && session.user) {
+                initializeApp(session.user);
+            }
+        });
     </script>
 </body>
 </html>
