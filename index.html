@@ -18,7 +18,7 @@
 <body>
 
     <div class="card">
-        <h2>בדיקת חיבור למערכת 🍊</h2>
+        <h2>בדיקת חיבור למערכת 🍎</h2>
         
         <div id="logged-out-view">
             <p>אנא התחברי כדי להמשיך</p>
@@ -37,16 +37,15 @@
         const SUPABASE_URL = 'https://oaapgalsprualadbfltv.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYXBnYWxzcHJ1YWxhZGJmbHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTQ0ODAsImV4cCI6MjA5NjMzMDQ4MH0.JP50HnTaKMg8gv38_tu81gcbTvGEhb6qY1pVzDq5XtE';
 
-        // אתחול החיבור
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // אתחול החיבור - תוקן שם המשתנה כדי למנוע התנגשות
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // פונקציית התחברות
         async function login() {
-            // הוספנו Alert כדי לוודא שהכפתור באמת מגיב
             alert("הכפתור נלחץ! מתחיל ניסיון התחברות מול Supabase...");
             
             try {
-                const { error } = await supabase.auth.signInWithOAuth({
+                const { error } = await supabaseClient.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
                         redirectTo: window.location.origin
@@ -65,32 +64,36 @@
 
         // פונקציית התנתקות
         async function logout() {
-            const { error } = await supabase.auth.signOut();
+            const { error } = await supabaseClient.auth.signOut();
             if (error) console.error("שגיאת התנתקות:", error);
             checkUser(); // רענון התצוגה
         }
 
         // פונקציה שבודקת אם המשתמשת מחוברת ומשנה את התצוגה בהתאם
         async function checkUser() {
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session && session.user) {
-                // משתמשת מחוברת
-                document.getElementById('logged-out-view').classList.add('hidden');
-                document.getElementById('logged-in-view').classList.remove('hidden');
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
                 
-                // שליפת השם והאימייל מגוגל
-                document.getElementById('user-name').innerText = session.user.user_metadata.full_name || 'משתמש/ת';
-                document.getElementById('user-email').innerText = session.user.email;
-            } else {
-                // משתמשת מנותקת
-                document.getElementById('logged-out-view').classList.remove('hidden');
-                document.getElementById('logged-in-view').classList.add('hidden');
+                if (session && session.user) {
+                    // משתמשת מחוברת
+                    document.getElementById('logged-out-view').classList.add('hidden');
+                    document.getElementById('logged-in-view').classList.remove('hidden');
+                    
+                    // שליפת השם והאימייל מגוגל
+                    document.getElementById('user-name').innerText = session.user.user_metadata.full_name || 'משתמש/ת';
+                    document.getElementById('user-email').innerText = session.user.email;
+                } else {
+                    // משתמשת מנותקת
+                    document.getElementById('logged-out-view').classList.remove('hidden');
+                    document.getElementById('logged-in-view').classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("שגיאה בבדיקת משתמש:", err);
             }
         }
 
         // האזנה לשינויים במצב ההתחברות
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
                 checkUser();
             }
