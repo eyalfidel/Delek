@@ -3,76 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>מעקב דלק 🍓</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>מעקב דלק 🥝</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js" defer></script>
     <style>
-        :root {
-            --primary: #4285f4;
-            --bg: #f3f4f6;
-            --surface: #ffffff;
-            --text: #1f2937;
-            --text-light: #6b7280;
-            --border: #e5e7eb;
-            --success: #10b981;
-            --danger: #ef4444;
-        }
+        :root { --primary: #4285f4; --bg: #f3f4f6; --surface: #ffffff; --text: #1f2937; --text-light: #6b7280; --border: #e5e7eb; --success: #10b981; --danger: #ef4444; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; }
-        h1, h2, h3, h4 { margin: 0 0 10px 0; }
-        p { margin: 0 0 10px 0; }
+        h1, h2, h3, h4, p { margin: 0 0 10px 0; }
         .hidden { display: none !important; }
-        
-        /* Cards & Buttons */
         .card { background: var(--surface); padding: 1.5rem; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center; margin-bottom: 15px; }
         button { background: var(--primary); color: white; border: none; padding: 12px 20px; font-size: 1rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
         button.secondary { background: var(--border); color: var(--text); }
         button.danger { background: var(--danger); }
         button.whatsapp { background: #25D366; }
-        
-        /* Layouts */
         .full-screen-center { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         #app-screen { display: flex; flex-direction: column; height: 100%; }
-        
         .header { background: var(--surface); padding: 15px 20px; padding-top: max(15px, env(safe-area-inset-top)); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .header-btn { background: transparent; color: var(--primary); padding: 6px 12px; font-size: 0.9rem; width: auto; margin: 0; border: 1px solid var(--primary); }
-        
         .view-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
         .form-group { margin-bottom: 15px; background: var(--surface); padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: right; }
-        
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; }
         input[type="text"], input[type="number"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
-        .checkbox-group { display: flex; align-items: center; gap: 10px; }
-        .checkbox-group input { width: 20px; height: 20px; }
-        
-        /* Dashboard Stats */
+        .checkbox-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;}
+        .checkbox-item { display: flex; align-items: center; gap: 10px; }
+        .checkbox-item input { width: 20px; height: 20px; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-box { background: var(--surface); padding: 15px 10px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .stat-value { font-size: 1.4rem; font-weight: bold; color: var(--primary); margin-bottom: 5px; }
         .stat-label { font-size: 0.8rem; color: var(--text-light); }
-        
-        /* Tables - RTL Support */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; text-align: right; direction: rtl; }
         th, td { padding: 8px 5px; border-bottom: 1px solid var(--border); }
         th { color: var(--text-light); font-weight: bold; }
-        
         .car-list-item { background: var(--surface); border: 1px solid var(--border); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .car-list-item:hover { border-color: var(--primary); }
-
         .bottom-nav { background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-light); background: none; width: auto; margin: 0; padding: 5px 15px; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-light); background: none; width: auto; margin: 0; padding: 5px 15px; cursor: pointer; }
         .nav-item.active { color: var(--primary); }
         .nav-icon { font-size: 1.5rem; margin-bottom: 4px; }
         .nav-text { font-size: 0.8rem; }
-
-        .members-ul { list-style-type: none; padding: 0; margin: 0; }
-        .members-ul li { padding: 8px 0; border-bottom: 1px solid var(--bg); display: flex; align-items: center; }
-        .members-ul li:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
-
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🍓</h2>
+            <h2>מעקב דלק 🥝</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
@@ -80,7 +56,6 @@
 
     <div id="cars-screen" class="full-screen-center hidden" style="justify-content: flex-start; padding-top: 40px;">
         <div style="width: 100%; max-width: 400px;">
-            
             <div class="card" style="margin-bottom: 20px; padding: 15px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h3 style="margin: 0; color: var(--primary);" id="user-display-name">שם</h3>
@@ -91,15 +66,10 @@
                     <button onclick="logout()" class="danger" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">התנתקות</button>
                 </div>
             </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="margin: 0;">הרכבים שלי</h2>
-            </div>
-            
+            <h2>הרכבים שלי</h2>
             <div id="my-cars-list">טוען...</div>
-
             <button onclick="showCreateCarForm()">+ הוספת רכב חדש</button>
-
+            
             <div id="create-car-form" class="card hidden" style="margin-top: 20px; text-align: right;">
                 <h3>רכב חדש</h3>
                 <label>כינוי לרכב:</label>
@@ -113,73 +83,73 @@
     </div>
 
     <div id="app-screen" class="hidden">
-        
         <header class="header">
-            <div>
-                <strong id="active-car-name">שם הרכב</strong>
-            </div>
-            <button class="header-btn" onclick="backToCars()">חזרה</button>
+            <div><strong id="active-car-name">שם הרכב</strong></div>
+            <button class="header-btn" onclick="backToCars()">חזרה</button> 
         </header>
 
         <main class="view-container">
-            
             <div id="view-dashboard" class="app-view">
-                
                 <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-value" id="dash-total-cost">0₪</div>
-                        <div class="stat-label">סה"כ הוצאות דלק</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="dash-avg-cost">0₪</div>
-                        <div class="stat-label">מחיר ממוצע לק"מ</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="dash-total-km">0</div>
-                        <div class="stat-label">ק"מ שתועדו</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="dash-total-liters">0</div>
-                        <div class="stat-label">ליטרים שתודלקו</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-value" id="dash-total-cost">0₪</div><div class="stat-label">הוצאות דלק</div></div>
+                    <div class="stat-box"><div class="stat-value" id="dash-avg-cost">0₪</div><div class="stat-label">ממוצע לק"מ</div></div>
+                    <div class="stat-box"><div class="stat-value" id="dash-total-km">0</div><div class="stat-label">ק"מ שתועדו</div></div>
+                    <div class="stat-box"><div class="stat-value" id="dash-current-odo">0</div><div class="stat-label">מד אוץ משוער</div></div>
                 </div>
 
                 <div class="form-group">
                     <h3>מצב קופה (מינ/פלוס) 💰</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">חישוב בסיסי: כמה שילמתי פחות (מרחק שנסעתי × עלות לק"מ).</p>
                     <div id="dash-balances">טוען נתונים...</div>
                 </div>
 
                 <div class="form-group">
                     <h3>שותפות לרכב 👥</h3>
-                    <div id="dash-members-list" style="margin-bottom: 15px; font-size: 0.95rem;">טוען...</div>
-                    
+                    <div id="dash-members-list" style="margin-bottom: 15px;"></div>
                     <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
-                    <h4 style="margin-bottom: 5px;">הוספת שותפה</h4>
-                    <input type="email" id="invite-email" placeholder="אימייל להזמנה (למשל sister@gmail.com)" style="margin-bottom: 10px;">
+                    <input type="email" id="invite-email" placeholder="אימייל להזמנה" style="margin-bottom: 10px;">
                     <button onclick="inviteUser()">הזמיני שותפה</button>
                     <div id="whatsapp-share-container" class="hidden">
-                        <button class="whatsapp" onclick="shareWhatsApp()">שלחי לה הודעה בוואטסאפ 💬</button>
+                        <button class="whatsapp" onclick="shareWhatsApp()">שלחי בוואטסאפ 💬</button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <h3>תדלוקים אחרונים ⛽</h3>
-                    <div id="dash-refuels-list" style="overflow-x: auto;">אין תדלוקים עדיין.</div>
-                </div>
-
-                <div class="form-group">
                     <h3>נסיעות אחרונות 🚗</h3>
-                    <div id="dash-trips-list" style="overflow-x: auto;">אין נסיעות עדיין.</div>
+                    <div id="dash-trips-list" style="overflow-x: auto;"></div>
                 </div>
             </div>
 
             <div id="view-trip" class="app-view hidden">
                 <h2>תיעוד נסיעה 🚗</h2>
+                
                 <div class="form-group">
-                    <label>מרחק שנסעת (בק"מ):</label>
-                    <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
+                    <label>איך תרצי להזין את הנסיעה?</label>
+                    <select id="trip-input-type" onchange="toggleTripInput()" style="width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                        <option value="distance">מרחק נסיעה (ק"מ)</option>
+                        <option value="odo">קריאת מד אוץ חדשה</option>
+                    </select>
+
+                    <div id="trip-distance-container">
+                        <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
+                    </div>
+                    
+                    <div id="trip-odo-container" class="hidden">
+                        <label style="font-size: 0.8rem; color: var(--text-light);" id="current-odo-hint">מד אוץ אחרון ידוע: מחושב...</label>
+                        <input type="number" id="trip-end-odo" placeholder="למשל: 45200">
+                    </div>
                 </div>
+
+                <div class="form-group">
+                    <label>הערה לנסיעה (אופציונלי):</label>
+                    <input type="text" id="trip-note" placeholder="למשל: נסיעה לסופר">
+                </div>
+
+                <div class="form-group">
+                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן)</label>
+                    <div id="trip-participants-list" class="checkbox-group">
+                        </div>
+                </div>
+
                 <button onclick="saveTrip()">שמירת נסיעה</button>
             </div>
 
@@ -213,336 +183,5 @@
             </div>
         </nav>
     </div>
-
-    <script>
-        const SUPABASE_URL = 'https://oaapgalsprualadbfltv.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYXBnYWxzcHJ1YWxhZGJmbHR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTQ0ODAsImV4cCI6MjA5NjMzMDQ4MH0.JP50HnTaKMg8gv38_tu81gcbTvGEhb6qY1pVzDq5XtE';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let currentUser = null;
-        let currentCar = null;
-
-        async function login() { await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }); }
-        
-        async function logout() {
-            await supabaseClient.auth.signOut();
-            showScreen('login-screen');
-        }
-
-        function showScreen(screenId) {
-            ['login-screen', 'cars-screen', 'app-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            document.getElementById(screenId).classList.remove('hidden');
-        }
-
-        function switchView(viewName, navElement) {
-            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('view-' + viewName).classList.remove('hidden');
-            if(navElement) navElement.classList.add('active');
-            
-            if(viewName === 'dashboard') loadDashboardData();
-        }
-
-        // טעינת המערכת וטיפול בפרופיל האישי
-        async function initializeApp(user) {
-            currentUser = user;
-            
-            try {
-                // בדיקה אם למשתמש כבר יש פרופיל כדי לא לדרוס את הכינוי שהוא בחר
-                const { data: existingProfile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
-                
-                if (!existingProfile) {
-                    // יצירת פרופיל ראשוני מהנתונים של גוגל
-                    await supabaseClient.from('profiles').insert({ id: user.id, display_name: user.user_metadata.full_name, email: user.email });
-                    document.getElementById('user-display-name').innerText = user.user_metadata.full_name || 'ללא שם';
-                } else {
-                    document.getElementById('user-display-name').innerText = existingProfile.display_name || 'ללא שם';
-                }
-                
-                document.getElementById('user-email-display').innerText = user.email;
-
-            } catch(e) { console.warn("שגיאה בטעינת פרופיל:", e); }
-            
-            await loadUserCars();
-            showScreen('cars-screen');
-        }
-
-        // עריכת הכינוי של המשתמש
-        async function editDisplayName() {
-            const currentName = document.getElementById('user-display-name').innerText;
-            const newName = prompt("הכנס כינוי חדש שיופיע לשותפות שלך:", currentName);
-            
-            if (newName && newName.trim() !== "") {
-                const { error } = await supabaseClient.from('profiles').update({ display_name: newName.trim() }).eq('id', currentUser.id);
-                if (!error) {
-                    document.getElementById('user-display-name').innerText = newName.trim();
-                } else {
-                    alert("שגיאה בעדכון השם: " + error.message);
-                }
-            }
-        }
-
-        // טעינת הרכבים
-        async function loadUserCars() {
-            const listDiv = document.getElementById('my-cars-list');
-            listDiv.innerHTML = 'בודק הזמנות וטוען רכבים...';
-
-            try {
-                const { data: invites, error: inviteError } = await supabaseClient.from('invitations').select('*').eq('invited_email', currentUser.email.toLowerCase());
-                if (!inviteError && invites && invites.length > 0) {
-                    for (let inv of invites) {
-                        await supabaseClient.from('group_members').upsert({ group_id: inv.group_id, user_id: currentUser.id });
-                        await supabaseClient.from('invitations').delete().eq('id', inv.id);
-                    }
-                    alert("הצטרפת לרכב חדש בהצלחה!");
-                }
-            } catch(e) { console.warn("טבלת הזמנות תקולה"); }
-
-            const { data: members, error } = await supabaseClient.from('group_members').select(`group_id, car_groups (id, name, initial_odo)`).eq('user_id', currentUser.id);
-
-            if (error) { 
-                listDiv.innerHTML = 'שגיאה בטעינת הרכבים: ' + error.message; 
-                return; 
-            }
-            
-            if (!members || members.length === 0) {
-                listDiv.innerHTML = '<p>אין לך עדיין רכבים. צרי רכב חדש או בקשי הזמנה.</p>';
-            } else {
-                listDiv.innerHTML = '';
-                members.forEach(member => {
-                    if(!member.car_groups) return; 
-                    
-                    const div = document.createElement('div');
-                    div.className = 'car-list-item';
-                    
-                    const carName = member.car_groups.name || 'רכב ללא שם (ישן/Null)';
-                    
-                    const infoDiv = document.createElement('div');
-                    infoDiv.style.flex = "1";
-                    infoDiv.innerHTML = `<strong>${carName}</strong>`;
-                    infoDiv.onclick = () => enterCar(member.car_groups);
-                    
-                    const btnDiv = document.createElement('div');
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'danger';
-                    delBtn.style.cssText = 'width: auto; padding: 5px 10px; margin: 0; font-size: 0.8rem;';
-                    delBtn.innerText = 'מחק רכב';
-                    delBtn.onclick = () => leaveCar(member.group_id);
-                    btnDiv.appendChild(delBtn);
-                    
-                    div.appendChild(infoDiv);
-                    div.appendChild(btnDiv);
-                    listDiv.appendChild(div);
-                });
-            }
-        }
-
-        async function leaveCar(groupId) {
-            if(confirm("למחוק את הרכב הזה מהרשימה שלך?")) {
-                await supabaseClient.from('group_members').delete().match({ group_id: groupId, user_id: currentUser.id });
-                loadUserCars();
-            }
-        }
-
-        function showCreateCarForm() { document.getElementById('create-car-form').classList.remove('hidden'); }
-        function hideCreateCarForm() { document.getElementById('create-car-form').classList.add('hidden'); }
-
-        async function createCar() {
-            const name = document.getElementById('new-car-name').value;
-            const initialOdo = document.getElementById('new-car-odo').value;
-            if (!name || !initialOdo) return alert("נא למלא פרטים");
-
-            try {
-                const { data: newCar, error } = await supabaseClient.from('car_groups').insert({ name: name, initial_odo: parseFloat(initialOdo) }).select().single();
-                if(error) throw error;
-                await supabaseClient.from('group_members').insert({ group_id: newCar.id, user_id: currentUser.id });
-
-                hideCreateCarForm();
-                loadUserCars();
-            } catch(e) {
-                alert("שגיאה ביצירת הרכב: " + e.message);
-            }
-        }
-
-        function enterCar(carObj) {
-            currentCar = carObj;
-            document.getElementById('active-car-name').innerText = carObj.name || 'רכב ישן';
-            switchView('dashboard', document.querySelector('.bottom-nav .nav-item')); 
-            showScreen('app-screen');
-        }
-
-        function backToCars() {
-            currentCar = null;
-            document.getElementById('whatsapp-share-container').classList.add('hidden');
-            loadUserCars();
-        }
-
-        // ---------- דשבורד ----------
-        async function loadDashboardData() {
-            if(!currentCar) return;
-
-            try {
-                const { data: refuels } = await supabaseClient.from('refuels').select('*, profiles(display_name)').eq('group_id', currentCar.id).order('created_at', { ascending: false });
-                const { data: trips } = await supabaseClient.from('trips').select('*, profiles(display_name)').eq('group_id', currentCar.id).order('created_at', { ascending: false });
-                // פה אנחנו מושכים עכשיו גם את המייל של השותפות
-                const { data: members } = await supabaseClient.from('group_members').select('profiles(id, display_name, email)').eq('group_id', currentCar.id);
-
-                const safeRefuels = refuels || [];
-                const safeTrips = trips || [];
-                const validMembers = (members || []).filter(m => m && m.profiles);
-
-                // עיבוד והצגת רשימת השותפות בצורה המפורטת
-                const membersHTML = validMembers.map(m => {
-                    const profile = m.profiles;
-                    if (profile.id === currentUser.id) {
-                        return `<li><strong style="color: var(--primary);">את/ה</strong> <span style="font-size: 0.85em; color: var(--text-light);">(${profile.display_name || 'ללא כינוי'})</span></li>`;
-                    } else {
-                        return `<li><strong>${profile.display_name || 'ללא כינוי'}</strong> <span style="font-size: 0.85em; color: var(--text-light); direction: ltr; display: inline-block;">(${profile.email})</span></li>`;
-                    }
-                }).join('');
-                document.getElementById('dash-members-list').innerHTML = `<ul class="members-ul">${membersHTML}</ul>`;
-
-                let totalCost = 0, totalLiters = 0, totalTripsKm = 0;
-                let paymentsByUser = {};
-                let kmByUser = {};
-
-                validMembers.forEach(m => {
-                    paymentsByUser[m.profiles.id] = { name: m.profiles.display_name, paid: 0 };
-                    kmByUser[m.profiles.id] = { name: m.profiles.display_name, km: 0 };
-                });
-
-                safeRefuels.forEach(r => {
-                    totalCost += Number(r.cost);
-                    totalLiters += Number(r.liters);
-                    if(paymentsByUser[r.paid_by]) paymentsByUser[r.paid_by].paid += Number(r.cost);
-                });
-
-                safeTrips.forEach(t => {
-                    totalTripsKm += Number(t.distance);
-                    if(kmByUser[t.recorded_by]) kmByUser[t.recorded_by].km += Number(t.distance);
-                });
-
-                let avgCostPerKm = totalTripsKm > 0 ? (totalCost / totalTripsKm) : 0;
-
-                document.getElementById('dash-total-cost').innerText = `₪${totalCost.toFixed(0)}`;
-                document.getElementById('dash-avg-cost').innerText = totalTripsKm > 0 ? `₪${avgCostPerKm.toFixed(2)}` : '0';
-                document.getElementById('dash-total-km').innerText = totalTripsKm.toFixed(1);
-                document.getElementById('dash-total-liters').innerText = totalLiters.toFixed(1);
-
-                let balanceHTML = '<table><tr><th>שותפה</th><th>שילמה</th><th>נסעה (ק"מ)</th><th>מצב</th></tr>';
-                validMembers.forEach(m => {
-                    let id = m.profiles.id;
-                    let displayName = m.profiles.display_name || 'אנונימית';
-                    if (id === currentUser.id) displayName = 'את/ה';
-                    
-                    let userKm = kmByUser[id] ? kmByUser[id].km : 0;
-                    let userPaid = paymentsByUser[id] ? paymentsByUser[id].paid : 0;
-                    let userOwesForFuel = userKm * avgCostPerKm;
-                    let finalBalance = userPaid - userOwesForFuel; 
-                    
-                    let color = finalBalance >= 0 ? 'var(--success)' : 'var(--danger)';
-                    balanceHTML += `<tr>
-                        <td>${displayName}</td>
-                        <td>₪${userPaid.toFixed(0)}</td>
-                        <td>${userKm.toFixed(1)}</td>
-                        <td style="color: ${color}; font-weight:bold; direction:ltr;">${finalBalance > 0 ? '+' : ''}${finalBalance.toFixed(0)}₪</td>
-                    </tr>`;
-                });
-                balanceHTML += '</table>';
-                document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים לחישוב התחשבנות.</p>';
-
-                let refuelsHTML = '<table><tr><th>תאריך</th><th>מתדלקת</th><th>עלות</th><th>ליטרים</th><th>מד אוץ</th></tr>';
-                safeRefuels.slice(0, 5).forEach(r => {
-                    let date = new Date(r.created_at).toLocaleDateString('he-IL');
-                    let displayName = r.profiles?.display_name || '';
-                    if (r.paid_by === currentUser.id) displayName = 'את/ה';
-                    
-                    refuelsHTML += `<tr><td>${date}</td><td>${displayName}</td><td>₪${r.cost}</td><td>${r.liters}</td><td>${r.odometer}</td></tr>`;
-                });
-                refuelsHTML += '</table>';
-                document.getElementById('dash-refuels-list').innerHTML = safeRefuels.length > 0 ? refuelsHTML : '<p>אין תדלוקים.</p>';
-
-                let tripsHTML = '<table><tr><th>תאריך</th><th>נהגת</th><th>מרחק</th></tr>';
-                safeTrips.slice(0, 5).forEach(t => {
-                    let date = new Date(t.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
-                    let displayName = t.profiles?.display_name || '';
-                    if (t.recorded_by === currentUser.id) displayName = 'את/ה';
-                    
-                    tripsHTML += `<tr><td>${date}</td><td>${displayName}</td><td>${t.distance} ק"מ</td></tr>`;
-                });
-                tripsHTML += '</table>';
-                document.getElementById('dash-trips-list').innerHTML = safeTrips.length > 0 ? tripsHTML : '<p>אין נסיעות.</p>';
-            } catch (e) {
-                console.error("שגיאת דשבורד:", e);
-                alert("קריסה בלתי צפויה בהצגת הנתונים: " + e.message);
-            }
-        }
-
-        // ---------- הזמנות ----------
-        async function inviteUser() {
-            try {
-                const email = document.getElementById('invite-email').value.toLowerCase().trim();
-                if (!email) return alert("נא להזין אימייל תקין");
-
-                const { error } = await supabaseClient.from('invitations').insert({
-                    group_id: currentCar.id,
-                    invited_email: email,
-                    invited_by: currentUser.id
-                });
-
-                if (error) {
-                    alert("שגיאה מול מסד הנתונים: " + error.message);
-                } else {
-                    alert(`הזמנה נשמרה עבור ${email}.`);
-                    document.getElementById('invite-email').value = '';
-                    document.getElementById('whatsapp-share-container').classList.remove('hidden');
-                    loadDashboardData(); 
-                }
-            } catch (e) {
-                alert("שגיאה לא צפויה: " + e.message);
-            }
-        }
-
-        function shareWhatsApp() {
-            const text = encodeURIComponent(`היי! הוספתי אותך לרכב "${currentCar.name}" באפליקציית הדלק שלנו 🚗⛽\nכנסי ללינק, תתחברי עם הג'ימייל שלך והרכב יופיע לך מיד:\n${window.location.origin}`);
-            window.open(`https://wa.me/?text=${text}`, '_blank');
-        }
-
-        // ---------- הוספת נתונים ----------
-        async function saveTrip() {
-            const distance = document.getElementById('trip-distance').value;
-            if (!distance || distance <= 0) return alert("נא להזין מרחק תקין");
-
-            const { error } = await supabaseClient.from('trips').insert({ group_id: currentCar.id, recorded_by: currentUser.id, distance: parseFloat(distance) });
-            if (error) return alert("שגיאה בשמירה: " + error.message);
-            
-            alert("נשמר בהצלחה!");
-            document.getElementById('trip-distance').value = '';
-        }
-
-        async function saveRefuel() {
-            const cost = document.getElementById('refuel-cost').value;
-            const liters = document.getElementById('refuel-liters').value;
-            const odo = document.getElementById('refuel-odo').value;
-
-            if (!cost || !liters || !odo) return alert("נא למלא את כל השדות");
-
-            const { error } = await supabaseClient.from('refuels').insert({ group_id: currentCar.id, paid_by: currentUser.id, cost: parseFloat(cost), liters: parseFloat(liters), odometer: parseFloat(odo) });
-            if (error) return alert("שגיאה בשמירה: " + error.message);
-            
-            alert("נשמר בהצלחה!");
-            document.getElementById('refuel-cost').value = ''; document.getElementById('refuel-liters').value = ''; document.getElementById('refuel-odo').value = '';
-        }
-
-        // ---------- אתחול ----------
-        supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) initializeApp(session.user);
-            else if (event === 'SIGNED_OUT') currentUser = null;
-        });
-
-        supabaseClient.auth.getSession().then(({ data: { session } }) => {
-            if (session && session.user) initializeApp(session.user);
-        });
-    </script>
 </body>
 </html>
