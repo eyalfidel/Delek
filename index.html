@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>מעקב דלק 🥝</title>
+    <title>מעקב דלק 🍋</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
     <style>
@@ -26,7 +26,7 @@
         .view-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
         .form-group { margin-bottom: 15px; background: var(--surface); padding: 15px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: right; }
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 0.95rem; }
-        input[type="text"], input[type="number"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        input[type="text"], input[type="number"], input[type="email"], select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; box-sizing: border-box; font-family: inherit; }
         .checkbox-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;}
         .checkbox-item { display: flex; align-items: center; gap: 10px; }
         .checkbox-item input { width: 20px; height: 20px; }
@@ -48,7 +48,7 @@
 <body>
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🥝</h2>
+            <h2>מעקב דלק 🍋</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
@@ -98,8 +98,23 @@
                 </div>
 
                 <div class="form-group">
-                    <h3>מצב קופה (מינ/פלוס) 💰</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin: 0;">מצב קופה (מינ/פלוס) 💰</h3>
+                        <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז חוב 💸</button>
+                    </div>
                     <div id="dash-balances">טוען נתונים...</div>
+                    
+                    <div id="settle-form-container" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+                        <h4>תיעוד העברת כסף</h4>
+                        <label>למי העברת?</label>
+                        <select id="settle-paid-to" style="margin-bottom: 10px;"></select>
+                        <label>סכום (₪):</label>
+                        <input type="number" id="settle-amount" placeholder="למשל: 100" style="margin-bottom: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="submitSettlement()" style="margin: 0;">שמירת העברה</button>
+                            <button onclick="hideSettleForm()" class="secondary" style="margin: 0;">ביטול</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -114,6 +129,16 @@
                 </div>
 
                 <div class="form-group">
+                    <h3>העברות כספים (קיזוזים) 💸</h3>
+                    <div id="dash-settlements-list" style="overflow-x: auto;"></div>
+                </div>
+
+                <div class="form-group">
+                    <h3>תדלוקים אחרונים ⛽</h3>
+                    <div id="dash-refuels-list" style="overflow-x: auto;"></div>
+                </div>
+
+                <div class="form-group">
                     <h3>נסיעות אחרונות 🚗</h3>
                     <div id="dash-trips-list" style="overflow-x: auto;"></div>
                 </div>
@@ -124,7 +149,7 @@
                 
                 <div class="form-group">
                     <label>איך תרצי להזין את הנסיעה?</label>
-                    <select id="trip-input-type" onchange="toggleTripInput()" style="width: 100%; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <select id="trip-input-type" onchange="toggleTripInput()" style="margin-bottom: 15px;">
                         <option value="distance">מרחק נסיעה (ק"מ)</option>
                         <option value="odo">קריאת מד אוץ חדשה</option>
                     </select>
@@ -146,8 +171,7 @@
 
                 <div class="form-group">
                     <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן)</label>
-                    <div id="trip-participants-list" class="checkbox-group">
-                        </div>
+                    <div id="trip-participants-list" class="checkbox-group"></div>
                 </div>
 
                 <button onclick="saveTrip()">שמירת נסיעה</button>
