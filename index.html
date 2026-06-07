@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>מעקב דלק 🍋</title>
+    <title>מעקב דלק 🥭</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
     <style>
@@ -48,7 +48,7 @@
 <body>
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🍋</h2>
+            <h2>מעקב דלק 🥭</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
@@ -85,7 +85,7 @@
     <div id="app-screen" class="hidden">
         <header class="header">
             <div><strong id="active-car-name">שם הרכב</strong></div>
-            <button class="header-btn" onclick="backToCars()">חזרה</button> 
+            <button class="header-btn" onclick="backToCars()">פרופיל ורכבים</button> 
         </header>
 
         <main class="view-container">
@@ -148,19 +148,15 @@
                 <h2>תיעוד נסיעה 🚗</h2>
                 
                 <div class="form-group">
-                    <label>איך תרצי להזין את הנסיעה?</label>
-                    <select id="trip-input-type" onchange="toggleTripInput()" style="margin-bottom: 15px;">
-                        <option value="distance">מרחק נסיעה (ק"מ)</option>
-                        <option value="odo">קריאת מד אוץ חדשה</option>
-                    </select>
-
-                    <div id="trip-distance-container">
+                    <label style="color: var(--primary);">הזיני מרחק או מד אוץ סופי (מה שנוח לך):</label>
+                    <div style="margin-top: 10px;">
+                        <label>מרחק שנסעת (בק"מ):</label>
                         <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
                     </div>
-                    
-                    <div id="trip-odo-container" class="hidden">
-                        <label style="font-size: 0.8rem; color: var(--text-light);" id="current-odo-hint">מד אוץ אחרון ידוע: מחושב...</label>
-                        <input type="number" id="trip-end-odo" placeholder="למשל: 45200">
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                        <label>או קריאת מד אוץ חדשה:</label>
+                        <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal;" id="current-odo-hint">מד אוץ קודם: מחושב...</label>
+                        <input type="number" id="trip-end-odo" placeholder="למשל: 45200" style="margin-top: 5px;">
                     </div>
                 </div>
 
@@ -189,8 +185,15 @@
                 </div>
                 <div class="form-group">
                     <label>מד אוץ נוכחי בעת התדלוק:</label>
-                    <input type="number" id="refuel-odo" placeholder="קריאת השעון ברכב">
+                    <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal;" id="refuel-odo-hint">מד אוץ קודם: מחושב...</label>
+                    <input type="number" id="refuel-odo" placeholder="קריאת השעון ברכב" style="margin-top: 5px;">
                 </div>
+                
+                <div class="form-group">
+                    <label>מי נסעה לתחנה? <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-light);">(למקרה של פער במד האוץ)</span></label>
+                    <div id="refuel-participants-list" class="checkbox-group"></div>
+                </div>
+
                 <button onclick="saveRefuel()">שמירת תדלוק</button>
             </div>
         </main>
