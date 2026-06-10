@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>מעקב דלק 🥑</title>
+    <title>מעקב דלק 🍉</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
     <style>
@@ -47,14 +47,16 @@
     </style>
 </head>
 <body>
+    <!-- 1. מסך התחברות -->
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🥑</h2>
+            <h2>מעקב דלק 🍉</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
     </div>
 
+    <!-- 2. מסך המתנה לאישור אדמין -->
     <div id="pending-screen" class="full-screen-center hidden">
         <div class="card">
             <h2>חשבונך ממתין לאישור ⏳</h2>
@@ -64,6 +66,16 @@
         </div>
     </div>
 
+    <!-- 3. מסך דחייה (חדש) -->
+    <div id="rejected-screen" class="full-screen-center hidden">
+        <div class="card">
+            <h2>הגישה נדחתה 🚫</h2>
+            <p style="color: var(--text-light); margin-top: 10px;">מנהל המערכת דחה את בקשת ההצטרפות שלך, או שהרשאתך הוסרה.</p>
+            <button onclick="logout()" class="danger" style="margin-top: 20px;">התנתקות וניסיון עם משתמש אחר</button>
+        </div>
+    </div>
+
+    <!-- 4. מסך ניהול רכבים, פרופיל ואדמין -->
     <div id="cars-screen" class="full-screen-center hidden" style="justify-content: flex-start; padding-top: 40px;">
         <div style="width: 100%; max-width: 400px;">
             <div class="card" style="margin-bottom: 20px; padding: 15px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
@@ -77,9 +89,15 @@
                 </div>
             </div>
 
+            <!-- פאנל אדמין מובנה -->
             <div id="admin-panel" class="form-group hidden" style="border: 2px solid var(--primary); background: #f0f7ff;">
-                <h3 style="color: var(--primary);">ניהול בקשות הצטרפות 🔐</h3>
-                <div id="admin-pending-list" style="font-size: 0.9rem; color: var(--text-light);">אין בקשות ממתינות.</div>
+                <h3 style="color: var(--primary);">ניהול משתמשים 🔐</h3>
+                
+                <h4 style="margin: 15px 0 5px 0; color: var(--text);">בקשות ממתינות</h4>
+                <div id="admin-pending-list" style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 15px;">אין בקשות ממתינות.</div>
+                
+                <h4 style="margin: 15px 0 5px 0; color: var(--text); border-top: 1px solid #ccc; padding-top: 15px;">משתמשים מאושרים</h4>
+                <div id="admin-approved-list" style="font-size: 0.9rem; color: var(--text-light);">אין משתמשים מאושרים.</div>
             </div>
 
             <h2>הרכבים שלי</h2>
@@ -98,6 +116,7 @@
         </div>
     </div>
 
+    <!-- 5. מסך האפליקציה המרכזי בתוך רכב ספציפי -->
     <div id="app-screen" class="hidden">
         <header class="header">
             <div><strong id="active-car-name">שם הרכב</strong></div>
@@ -117,11 +136,11 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h3 style="margin: 0;">מצב קופה (מינ/פלוס) 💰</h3>
                         <div style="display: flex; gap: 5px;">
-                            <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז 💸</button>
-                            <button onclick="triggerResetAllBalances()" class="danger" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">איפוס 🔄</button>
+                            <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז חוב 💸</button>
+                            <button onclick="triggerResetAllBalances()" class="danger" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">איפוס חובות 🔄</button>
                         </div>
                     </div>
-                    <div id="dash-balances" style="overflow-x: auto;">טוען נתונים...</div>
+                    <div id="dash-balances">טוען נתונים...</div>
                     
                     <div id="settle-form-container" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                         <h4>תיעוד העברת כסף</h4>
@@ -147,7 +166,7 @@
                     </div>
                 </div>
 
-                <div class="form-group"><h3>העברות (קיזוזים ואיפוסים) 💸</h3><div id="dash-settlements-list" style="overflow-x: auto;"></div></div>
+                <div class="form-group"><h3>העברות כספים (קיזוזים ואיפוסים) 💸</h3><div id="dash-settlements-list" style="overflow-x: auto;"></div></div>
                 <div class="form-group"><h3>תדלוקים ואנליטיקת מכלים ⛽</h3><div id="dash-refuels-list" style="overflow-x: auto;"></div></div>
                 <div class="form-group"><h3>נסיעות אחרונות 🚗</h3><div id="dash-trips-list" style="overflow-x: auto;"></div></div>
             </div>
@@ -155,7 +174,7 @@
             <div id="view-trip" class="app-view hidden">
                 <h2>תיעוד נסיעה 🚗</h2>
                 <div class="form-group">
-                    <label style="color: var(--primary); margin-bottom: 15px;">מלאי את המרחק שנסעת או את מד האוץ בסיום:</label>
+                    <label style="color: var(--primary); margin-bottom: 15px;">מלאי את המרחק שנסעת או את מד האוץ בסיום (השדה שתמלאי יקבע):</label>
                     <div>
                         <label>מרחק נסיעה בפועל (בק"מ):</label>
                         <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
@@ -171,7 +190,7 @@
                     <input type="text" id="trip-note" placeholder="למשל: נסיעה לסופר">
                 </div>
                 <div class="form-group">
-                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן)</label>
+                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן שווה בשווה)</label>
                     <div id="trip-participants-list" class="checkbox-group"></div>
                 </div>
                 <button onclick="saveTrip()">שמירת נסיעה</button>
@@ -180,10 +199,12 @@
             <div id="view-refuel" class="app-view hidden">
                 <h2>תיעוד תדלוק ⛽</h2>
                 <div class="form-group">
-                    <label>כמה שילמת? (₪)</label><input type="number" id="refuel-cost" placeholder="למשל: 250">
+                    <label>כמה שילמת? (₪)</label>
+                    <input type="number" id="refuel-cost" placeholder="למשל: 250">
                 </div>
                 <div class="form-group">
-                    <label>כמה ליטרים?</label><input type="number" id="refuel-liters" placeholder="למשל: 35.2" step="0.1">
+                    <label>כמה ליטרים?</label>
+                    <input type="number" id="refuel-liters" placeholder="למשל: 35.2" step="0.1">
                 </div>
                 <div class="form-group">
                     <label>מד אוץ נוכחי בעת התדלוק:</label>
@@ -192,7 +213,7 @@
                     <input type="number" id="refuel-odo" placeholder="קריאת השעון ברכב" style="margin-top: 5px;">
                 </div>
                 <div class="form-group">
-                    <label>מי נסעה לתחנת הדלק? (לחלוקת פער במידה וקיים)</label>
+                    <label>מי נסעה ברכב לתחנת הדלק? (במידה וקיים פער קילומטרים אבודים, עלות הנסיעה לתחנה תתחלק בין המסומנות)</label>
                     <div id="refuel-participants-list" class="checkbox-group"></div>
                 </div>
                 <button onclick="saveRefuel()">שמירת תדלוק</button>
