@@ -36,7 +36,6 @@ async function initializeApp(user) {
     let userStatus = 'pending';
     
     try {
-        // הגדרה קשיחה: רק eyal.fidel@gmail.com הוא האדמין הראשי
         if (user.email === 'eyal.fidel@gmail.com') {
             await supabaseClient.from('profiles').upsert({ id: user.id, display_name: user.user_metadata.full_name, email: user.email, status: 'admin' });
             userStatus = 'admin';
@@ -77,6 +76,18 @@ async function initializeApp(user) {
     await loadUserCars(true);
 }
 
+// פונקציה למשתמשים שנדחו
+async function requestAccessAgain() {
+    const { error } = await supabaseClient.from('profiles').update({ status: 'pending' }).eq('id', currentUser.id);
+    if (error) {
+        alert("שגיאה בבקשת הגישה מחדש: " + error.message);
+    } else {
+        alert("בקשתך נשלחה מחדש למנהל המערכת.");
+        document.getElementById('pending-user-email').innerText = currentUser.email;
+        showScreen('pending-screen');
+    }
+}
+
 // ---- פונקציות ניהול לאדמין ----
 async function loadPendingUsers() {
     const container = document.getElementById('admin-pending-list');
@@ -104,7 +115,6 @@ async function loadPendingUsers() {
 
 async function loadApprovedUsers() {
     const container = document.getElementById('admin-approved-list');
-    // שולף גם 'approved' וגם מנהלים נוספים אם יוגדרו בהמשך, חוץ מהמשתמש הנוכחי
     const { data: approvedUsers } = await supabaseClient.from('profiles').select('*').in('status', ['approved']).neq('id', currentUser.id);
     
     if (!approvedUsers || approvedUsers.length === 0) {
@@ -444,7 +454,7 @@ async function loadDashboardData() {
     document.getElementById('dash-avg-cost').innerText = totalTripsKm > 0 ? `₪${avgCostPerKm.toFixed(2)}` : '0';
     document.getElementById('dash-total-km').innerText = totalTripsKm.toFixed(1);
 
-    // 1. טבלת מצב קופה (RTL)
+    // טבלת קופה (מימין לשמאל: קטגוריה, מצב, דלק, ק"מ)
     let balanceHTML = '<table><tr><th>שותפה</th><th>מצב כולל</th><th>שילמה דלק</th><th>נסעה (ק"מ)</th></tr>';
     currentCarMembers.forEach(m => {
         let id = m.profiles.id;
@@ -468,7 +478,7 @@ async function loadDashboardData() {
     balanceHTML += '</table>';
     document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים לחישוב.</p>';
 
-    // 2. טבלת קיזוזים (RTL)
+    // טבלת קיזוזים (מימין לשמאל)
     let setHTML = '<table><tr><th>תאריך</th><th>מעבירה</th><th>מקבלת</th><th>סכום</th><th>סוג פעולה</th></tr>';
     safeSettlements.slice(0, 5).forEach(s => {
         let by = currentCarMembers.find(m => m.profiles.id === s.paid_by)?.profiles?.display_name || 'אנונימית';
@@ -479,7 +489,7 @@ async function loadDashboardData() {
     setHTML += '</table>';
     document.getElementById('dash-settlements-list').innerHTML = safeSettlements.length > 0 ? setHTML : '<p>אין העברות כספים.</p>';
 
-    // 3. טבלת תדלוקים (RTL)
+    // טבלת תדלוקים (מימין לשמאל)
     let refuelsHTML = '<table><tr><th>תאריך</th><th>מתדלקת</th><th>עלות</th><th>ליטרים</th><th>₪ לליטר</th><th>ק"מ בטנק</th><th>₪ לק"מ</th><th>מד אוץ</th></tr>';
     safeRefuels.slice(0, 5).forEach((r, idx) => {
         let date = new Date(r.created_at).toLocaleDateString('he-IL');
@@ -499,7 +509,7 @@ async function loadDashboardData() {
     refuelsHTML += '</table>';
     document.getElementById('dash-refuels-list').innerHTML = safeRefuels.length > 0 ? refuelsHTML : '<p>אין תדלוקים.</p>';
 
-    // 4. טבלת נסיעות (RTL)
+    // טבלת נסיעות (מימין לשמאל)
     let tripsHTML = '<table><tr><th>תאריך</th><th>נהגת</th><th>מרחק</th><th>מד אוץ</th><th>שותפות</th><th>הערה</th></tr>';
     safeTrips.slice(0, 6).forEach(t => {
         let date = new Date(t.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit'});
