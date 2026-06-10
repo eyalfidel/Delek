@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>מעקב דלק 🍉</title>
+    <title>מעקב דלק 🍇</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
     <style>
@@ -50,7 +50,7 @@
     <!-- 1. מסך התחברות -->
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🍉</h2>
+            <h2>מעקב דלק 🍇</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
@@ -66,12 +66,13 @@
         </div>
     </div>
 
-    <!-- 3. מסך דחייה (חדש) -->
+    <!-- 3. מסך דחייה (מעודכן עם אפשרות לבקש שוב) -->
     <div id="rejected-screen" class="full-screen-center hidden">
         <div class="card">
             <h2>הגישה נדחתה 🚫</h2>
             <p style="color: var(--text-light); margin-top: 10px;">מנהל המערכת דחה את בקשת ההצטרפות שלך, או שהרשאתך הוסרה.</p>
-            <button onclick="logout()" class="danger" style="margin-top: 20px;">התנתקות וניסיון עם משתמש אחר</button>
+            <button onclick="requestAccessAgain()" class="secondary" style="margin-top: 20px;">בקשת גישה מחדש</button>
+            <button onclick="logout()" class="danger" style="margin-top: 10px;">התנתקות וניסיון עם משתמש אחר</button>
         </div>
     </div>
 
