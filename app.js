@@ -12,8 +12,12 @@ async function login() { await supabaseClient.auth.signInWithOAuth({ provider: '
 async function logout() { await supabaseClient.auth.signOut(); window.location.reload(); }
 
 function showScreen(screenId) {
-    ['login-screen', 'pending-screen', 'cars-screen', 'app-screen'].forEach(id => document.getElementById(id).classList.add('hidden'));
-    document.getElementById(screenId).classList.remove('hidden');
+    ['login-screen', 'pending-screen', 'rejected-screen', 'cars-screen', 'app-screen'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+    const target = document.getElementById(screenId);
+    if(target) target.classList.remove('hidden');
 }
 
 function switchView(viewName, navElement) {
@@ -32,7 +36,8 @@ async function initializeApp(user) {
     let userStatus = 'pending';
     
     try {
-        if (user.email === 'eyal.fidel@gmail.com' || user.email === 'eyal.fidel@mail.huji.ac.il') {
+        // הגדרה קשיחה: רק eyal.fidel@gmail.com הוא האדמין הראשי
+        if (user.email === 'eyal.fidel@gmail.com') {
             await supabaseClient.from('profiles').upsert({ id: user.id, display_name: user.user_metadata.full_name, email: user.email, status: 'admin' });
             userStatus = 'admin';
         } else {
@@ -54,37 +59,91 @@ async function initializeApp(user) {
             return;
         }
 
+        if (userStatus === 'rejected') {
+            showScreen('rejected-screen');
+            return;
+        }
+
         if (userStatus === 'admin') {
             document.getElementById('admin-panel').classList.remove('hidden');
             loadPendingUsers();
+            loadApprovedUsers();
         }
 
-    } catch(e) { console.warn("שגיאה באתחול", e); }
+    } catch(e) { 
+        console.warn("שגיאה בשלב האתחול המאובטח", e); 
+    }
     
     await loadUserCars(true);
 }
 
+// ---- פונקציות ניהול לאדמין ----
 async function loadPendingUsers() {
     const container = document.getElementById('admin-pending-list');
     const { data: pendingUsers } = await supabaseClient.from('profiles').select('*').eq('status', 'pending');
+    
     if (!pendingUsers || pendingUsers.length === 0) {
         container.innerHTML = 'אין בקשות הצטרפות ממתינות.';
         return;
     }
+    
     container.innerHTML = '';
     pendingUsers.forEach(u => {
         const div = document.createElement('div');
-        div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:white; padding:8px; border-radius:6px;';
-        div.innerHTML = `<div><strong>${u.display_name || 'אנונימי'}</strong> (${u.email})</div><button onclick="approveUser('${u.id}')" class="success" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem;">אשר גישה</button>`;
+        div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:white; padding:8px; border-radius:6px; flex-wrap: wrap; gap: 5px;';
+        div.innerHTML = `
+            <div style="flex:1; min-width: 150px;"><strong>${u.display_name || 'אנונימי'}</strong><br><span style="font-size:0.8rem;">${u.email}</span></div>
+            <div style="display:flex; gap: 5px;">
+                <button onclick="approveUser('${u.id}')" class="success" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem;">אשר</button>
+                <button onclick="rejectUser('${u.id}')" class="danger" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem;">דחה</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function loadApprovedUsers() {
+    const container = document.getElementById('admin-approved-list');
+    // שולף גם 'approved' וגם מנהלים נוספים אם יוגדרו בהמשך, חוץ מהמשתמש הנוכחי
+    const { data: approvedUsers } = await supabaseClient.from('profiles').select('*').in('status', ['approved']).neq('id', currentUser.id);
+    
+    if (!approvedUsers || approvedUsers.length === 0) {
+        container.innerHTML = 'אין משתמשים מאושרים במערכת (מלבדך).';
+        return;
+    }
+    
+    container.innerHTML = '';
+    approvedUsers.forEach(u => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:white; padding:8px; border-radius:6px; flex-wrap: wrap; gap: 5px;';
+        div.innerHTML = `
+            <div style="flex:1; min-width: 150px;"><strong>${u.display_name || 'אנונימי'}</strong><br><span style="font-size:0.8rem;">${u.email}</span></div>
+            <button onclick="revokeUser('${u.id}')" class="secondary" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem; border: 1px solid var(--danger); color: var(--danger);">הסר גישה</button>
+        `;
         container.appendChild(div);
     });
 }
 
 async function approveUser(userId) {
     const { error } = await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', userId);
-    if (error) alert("שגיאה: " + error.message);
-    else { alert("המשתמש אושר בהצלחה!"); loadPendingUsers(); }
+    if (error) alert("שגיאה באישור המשתמש: " + error.message);
+    else { loadPendingUsers(); loadApprovedUsers(); }
 }
+
+async function rejectUser(userId) {
+    if(!confirm("האם לדחות את המשתמש הזה? גישה תיחסם בפניו.")) return;
+    const { error } = await supabaseClient.from('profiles').update({ status: 'rejected' }).eq('id', userId);
+    if (error) alert("שגיאה בדחיית המשתמש: " + error.message);
+    else { loadPendingUsers(); }
+}
+
+async function revokeUser(userId) {
+    if(!confirm("האם להסיר את הגישה למשתמש זה? הוא לא יוכל להיכנס לאפליקציה יותר.")) return;
+    const { error } = await supabaseClient.from('profiles').update({ status: 'rejected' }).eq('id', userId);
+    if (error) alert("שגיאה בהסרת גישה: " + error.message);
+    else { loadApprovedUsers(); }
+}
+// --------------------------------
 
 async function editDisplayName() {
     const currentName = document.getElementById('user-display-name').innerText;
@@ -127,6 +186,7 @@ async function loadUserCars(isInitialLogin = false) {
         validMembers.forEach(member => {
             const div = document.createElement('div');
             div.className = 'car-list-item';
+            
             const infoDiv = document.createElement('div');
             infoDiv.style.flex = "1";
             infoDiv.innerHTML = `<strong>${member.car_groups.name || 'רכב ללא שם'}</strong>`;
@@ -249,8 +309,9 @@ async function submitSettlement() {
         group_id: currentCar.id, paid_by: currentUser.id, paid_to: paidTo, amount: amount, note: "העברה ידנית"
     });
     
-    if(error) return alert("שגיאה: " + error.message);
-    alert("העברת הכסף נשמרה!");
+    if(error) return alert("שגיאה בשמירת ההעברה: " + error.message);
+    
+    alert("העברת הכסף נשמרה בהצלחה!");
     hideSettleForm();
     loadDashboardData();
 }
@@ -258,8 +319,8 @@ async function submitSettlement() {
 async function triggerResetAllBalances() {
     if (!confirm("האם את בטוחה שברצונך לאפס את כל החובות הנוכחיים ברכב?\nהפעולה תייצר העברות מקזזות אוטומטיות שיביאו את כולם ל-0 ₪.")) return;
     
-    let debtors = [];
-    let creditors = [];
+    let debtors = [];  
+    let creditors = []; 
     
     for (let id in userBalancesGlobal) {
         let bal = userBalancesGlobal[id];
@@ -285,7 +346,7 @@ async function triggerResetAllBalances() {
             recordsToInsert.push({
                 group_id: currentCar.id,
                 paid_by: debtor.id, 
-                paid_to: creditor.id,
+                paid_to: creditor.id, 
                 amount: parseFloat(settleAmount.toFixed(2)),
                 note: "איפוס חובות תקופתי"
             });
@@ -383,7 +444,7 @@ async function loadDashboardData() {
     document.getElementById('dash-avg-cost').innerText = totalTripsKm > 0 ? `₪${avgCostPerKm.toFixed(2)}` : '0';
     document.getElementById('dash-total-km').innerText = totalTripsKm.toFixed(1);
 
-    // טבלת קופה (מימין לשמאל: קטגוריה, מצב, דלק, ק"מ)
+    // 1. טבלת מצב קופה (RTL)
     let balanceHTML = '<table><tr><th>שותפה</th><th>מצב כולל</th><th>שילמה דלק</th><th>נסעה (ק"מ)</th></tr>';
     currentCarMembers.forEach(m => {
         let id = m.profiles.id;
@@ -394,7 +455,7 @@ async function loadDashboardData() {
         let sRec = paymentsByUser[id] ? paymentsByUser[id].setReceived : 0;
         
         let finalBalance = fPaid - (km * avgCostPerKm) + sPaid - sRec;
-        userBalancesGlobal[id] = finalBalance;
+        userBalancesGlobal[id] = finalBalance; 
         
         let color = finalBalance >= 0 ? 'var(--success)' : 'var(--danger)';
         balanceHTML += `<tr>
@@ -407,7 +468,7 @@ async function loadDashboardData() {
     balanceHTML += '</table>';
     document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים לחישוב.</p>';
 
-    // טבלת קיזוזים (מימין לשמאל)
+    // 2. טבלת קיזוזים (RTL)
     let setHTML = '<table><tr><th>תאריך</th><th>מעבירה</th><th>מקבלת</th><th>סכום</th><th>סוג פעולה</th></tr>';
     safeSettlements.slice(0, 5).forEach(s => {
         let by = currentCarMembers.find(m => m.profiles.id === s.paid_by)?.profiles?.display_name || 'אנונימית';
@@ -418,7 +479,7 @@ async function loadDashboardData() {
     setHTML += '</table>';
     document.getElementById('dash-settlements-list').innerHTML = safeSettlements.length > 0 ? setHTML : '<p>אין העברות כספים.</p>';
 
-    // טבלת תדלוקים (מימין לשמאל)
+    // 3. טבלת תדלוקים (RTL)
     let refuelsHTML = '<table><tr><th>תאריך</th><th>מתדלקת</th><th>עלות</th><th>ליטרים</th><th>₪ לליטר</th><th>ק"מ בטנק</th><th>₪ לק"מ</th><th>מד אוץ</th></tr>';
     safeRefuels.slice(0, 5).forEach((r, idx) => {
         let date = new Date(r.created_at).toLocaleDateString('he-IL');
@@ -438,7 +499,7 @@ async function loadDashboardData() {
     refuelsHTML += '</table>';
     document.getElementById('dash-refuels-list').innerHTML = safeRefuels.length > 0 ? refuelsHTML : '<p>אין תדלוקים.</p>';
 
-    // טבלת נסיעות (מימין לשמאל)
+    // 4. טבלת נסיעות (RTL)
     let tripsHTML = '<table><tr><th>תאריך</th><th>נהגת</th><th>מרחק</th><th>מד אוץ</th><th>שותפות</th><th>הערה</th></tr>';
     safeTrips.slice(0, 6).forEach(t => {
         let date = new Date(t.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit'});
@@ -476,7 +537,7 @@ async function saveTrip() {
         if (distance <= 0) return alert("הזני מרחק תקין");
         endOdo = calculatedOdometer + distance;
     } else {
-        return alert("אנא הזיני מרחק או מד אוץ סופי.");
+        return alert("אנא הזיני מרחק נסיעה או קריאת מד אוץ סופית.");
     }
 
     if (distance > 200 && !confirm("המרחק שהוזן גבוה מ-200 ק\"מ. האם את בטוחה?")) return;
@@ -485,18 +546,18 @@ async function saveTrip() {
     currentCarMembers.forEach(m => {
         if(document.getElementById(`part-${m.profiles.id}`)?.checked) selectedParticipants.push(m.profiles.id);
     });
-    if(selectedParticipants.length === 0) return alert("חייבת לבחור לפחות נוסעת אחת");
+    if(selectedParticipants.length === 0) return alert("חייבת לבחור לפחות משתתפת אחת בנסיעה");
 
     const { data: newTrip, error } = await supabaseClient.from('trips').insert({ 
         group_id: currentCar.id, recorded_by: currentUser.id, distance: distance, end_odo: endOdo, note: document.getElementById('trip-note').value.trim()
     }).select().single();
 
-    if (error) return alert("שגיאה: " + error.message);
+    if (error) return alert("שגיאה בשמירת הנסיעה: " + error.message);
     
     const pData = selectedParticipants.map(uid => ({ trip_id: newTrip.id, user_id: uid }));
     await supabaseClient.from('trip_participants').insert(pData);
 
-    alert("הנסיעה נרשמה!");
+    alert("הנסיעה נרשמה בהצלחה!");
     document.getElementById('trip-distance').value = ''; document.getElementById('trip-end-odo').value = ''; document.getElementById('trip-note').value = '';
     switchView('dashboard', document.querySelector('.bottom-nav .nav-item')); 
 }
@@ -528,20 +589,20 @@ async function saveRefuel() {
     } else if(gap < -0.5 && !confirm(`מד האוץ שהזנת נמוך מהחישוב ברקע. להמשיך?`)) return;
 
     const { error } = await supabaseClient.from('refuels').insert({ group_id: currentCar.id, paid_by: currentUser.id, cost: cost, liters: liters, odometer: odo });
-    if (error) return alert("שגיאה: " + error.message);
+    if (error) return alert("שגיאה בשמירת התדלוק: " + error.message);
     
-    alert("התדלוק נשמר!");
+    alert("התדלוק נשמר בהצלחה!");
     document.getElementById('refuel-cost').value = ''; document.getElementById('refuel-liters').value = ''; document.getElementById('refuel-odo').value = '';
     switchView('dashboard', document.querySelector('.bottom-nav .nav-item')); 
 }
 
 async function inviteUser() {
     const email = document.getElementById('invite-email').value.toLowerCase().trim();
-    if (!email) return alert("הזיני מייל");
+    if (!email) return alert("הזיני מייל תקין");
     const { error } = await supabaseClient.from('invitations').insert({ group_id: currentCar.id, invited_email: email, invited_by: currentUser.id });
-    if (error) alert("שגיאה: " + error.message);
+    if (error) alert("שגיאה בהזמנה: " + error.message);
     else {
-        alert("הזמנה נשמרה בהצלחה במערכת.");
+        alert("ההזמנה נשמרה בהצלחה במערכת.");
         document.getElementById('invite-email').value = '';
         document.getElementById('whatsapp-share-container').classList.remove('hidden');
     }
