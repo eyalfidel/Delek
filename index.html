@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>מעקב דלק 🥭</title>
+    <title>מעקב דלק 🥑</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
     <style>
@@ -35,12 +35,9 @@
         .stat-box { background: var(--surface); padding: 15px 10px; border-radius: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .stat-value { font-size: 1.4rem; font-weight: bold; color: var(--primary); margin-bottom: 5px; }
         .stat-label { font-size: 0.8rem; color: var(--text-light); }
-        
-        /* עימוד טבלאות תקין מימין לשמאל */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; text-align: right; direction: rtl; }
         th, td { padding: 8px 5px; border-bottom: 1px solid var(--border); text-align: right; }
         th { color: var(--text-light); font-weight: bold; }
-        
         .car-list-item { background: var(--surface); border: 1px solid var(--border); padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .bottom-nav { background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); position: fixed; bottom: 0; width: 100%; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-light); background: none; width: auto; margin: 0; padding: 5px 15px; cursor: pointer; }
@@ -52,7 +49,7 @@
 <body>
     <div id="login-screen" class="full-screen-center">
         <div class="card">
-            <h2>מעקב דלק 🥭</h2>
+            <h2>מעקב דלק 🥑</h2>
             <p>אנא התחברי כדי להמשיך</p>
             <button onclick="login()">התחברי עם Google</button>
         </div>
@@ -120,11 +117,11 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h3 style="margin: 0;">מצב קופה (מינ/פלוס) 💰</h3>
                         <div style="display: flex; gap: 5px;">
-                            <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז חוב 💸</button>
-                            <button onclick="triggerResetAllBalances()" class="danger" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">איפוס חובות 🔄</button>
+                            <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז 💸</button>
+                            <button onclick="triggerResetAllBalances()" class="danger" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">איפוס 🔄</button>
                         </div>
                     </div>
-                    <div id="dash-balances">טוען נתונים...</div>
+                    <div id="dash-balances" style="overflow-x: auto;">טוען נתונים...</div>
                     
                     <div id="settle-form-container" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                         <h4>תיעוד העברת כסף</h4>
@@ -150,62 +147,43 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <h3>העברות כספים (קיזוזים ואיפוסים) 💸</h3>
-                    <div id="dash-settlements-list" style="overflow-x: auto;"></div>
-                </div>
-
-                <div class="form-group">
-                    <h3>תדלוקים ואנליטיקת מכלים ⛽</h3>
-                    <div id="dash-refuels-list" style="overflow-x: auto;"></div>
-                </div>
-
-                <div class="form-group">
-                    <h3>נסיעות אחרונות 🚗</h3>
-                    <div id="dash-trips-list" style="overflow-x: auto;"></div>
-                </div>
+                <div class="form-group"><h3>העברות (קיזוזים ואיפוסים) 💸</h3><div id="dash-settlements-list" style="overflow-x: auto;"></div></div>
+                <div class="form-group"><h3>תדלוקים ואנליטיקת מכלים ⛽</h3><div id="dash-refuels-list" style="overflow-x: auto;"></div></div>
+                <div class="form-group"><h3>נסיעות אחרונות 🚗</h3><div id="dash-trips-list" style="overflow-x: auto;"></div></div>
             </div>
 
             <div id="view-trip" class="app-view hidden">
                 <h2>תיעוד נסיעה 🚗</h2>
-                
                 <div class="form-group">
-                    <label style="color: var(--primary); margin-bottom: 15px;">מלאי את המרחק שנסעת או את מד האוץ בסיום (השדה שתמלאי יקבע):</label>
-                    
+                    <label style="color: var(--primary); margin-bottom: 15px;">מלאי את המרחק שנסעת או את מד האוץ בסיום:</label>
                     <div>
                         <label>מרחק נסיעה בפועל (בק"מ):</label>
                         <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
                     </div>
-                    
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border);">
                         <label>או קריאת מד אוץ בסיום הנסיעה:</label>
                         <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal; margin-bottom: 4px;" id="current-odo-hint">מד אוץ קודם: -</label>
                         <input type="number" id="trip-end-odo" placeholder="למשל: 45200">
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label>הערה לנסיעה (אופציונלי):</label>
                     <input type="text" id="trip-note" placeholder="למשל: נסיעה לסופר">
                 </div>
-
                 <div class="form-group">
-                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן שווה בשווה)</label>
+                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן)</label>
                     <div id="trip-participants-list" class="checkbox-group"></div>
                 </div>
-
                 <button onclick="saveTrip()">שמירת נסיעה</button>
             </div>
 
             <div id="view-refuel" class="app-view hidden">
                 <h2>תיעוד תדלוק ⛽</h2>
                 <div class="form-group">
-                    <label>כמה שילמת? (₪)</label>
-                    <input type="number" id="refuel-cost" placeholder="למשל: 250">
+                    <label>כמה שילמת? (₪)</label><input type="number" id="refuel-cost" placeholder="למשל: 250">
                 </div>
                 <div class="form-group">
-                    <label>כמה ליטרים?</label>
-                    <input type="number" id="refuel-liters" placeholder="למשל: 35.2" step="0.1">
+                    <label>כמה ליטרים?</label><input type="number" id="refuel-liters" placeholder="למשל: 35.2" step="0.1">
                 </div>
                 <div class="form-group">
                     <label>מד אוץ נוכחי בעת התדלוק:</label>
@@ -213,26 +191,18 @@
                     <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal; display: block; margin-bottom: 4px;" id="prev-refuel-odo-display">מד אוץ בתדלוק הקודם: -</label>
                     <input type="number" id="refuel-odo" placeholder="קריאת השעון ברכב" style="margin-top: 5px;">
                 </div>
-                
                 <div class="form-group">
-                    <label>מי נסעה ברכב לתחנת הדלק? (במידה וקיים פער קילומטרים אבודים, עלות הנסיעה לתחנה תתחלק בין המסומנות)</label>
+                    <label>מי נסעה לתחנת הדלק? (לחלוקת פער במידה וקיים)</label>
                     <div id="refuel-participants-list" class="checkbox-group"></div>
                 </div>
-
                 <button onclick="saveRefuel()">שמירת תדלוק</button>
             </div>
         </main>
 
         <nav class="bottom-nav">
-            <div class="nav-item active" onclick="switchView('dashboard', this)">
-                <span class="nav-icon">📊</span><span class="nav-text">מצב</span>
-            </div>
-            <div class="nav-item" onclick="switchView('trip', this)">
-                <span class="nav-icon">🚗</span><span class="nav-text">נסיעה</span>
-            </div>
-            <div class="nav-item" onclick="switchView('refuel', this)">
-                <span class="nav-icon">⛽</span><span class="nav-text">תדלוק</span>
-            </div>
+            <div class="nav-item active" onclick="switchView('dashboard', this)"><span class="nav-icon">📊</span><span class="nav-text">מצב</span></div>
+            <div class="nav-item" onclick="switchView('trip', this)"><span class="nav-icon">🚗</span><span class="nav-text">נסיעה</span></div>
+            <div class="nav-item" onclick="switchView('refuel', this)"><span class="nav-icon">⛽</span><span class="nav-text">תדלוק</span></div>
         </nav>
     </div>
 </body>
