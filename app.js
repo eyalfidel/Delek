@@ -6,7 +6,7 @@ let currentUser = null;
 let currentCar = null;
 let currentCarMembers = [];
 let calculatedOdometer = 0;
-let userBalancesGlobal = {}; // שמירת המצב הכספי לצרכי איפוס חובות מהיר
+let userBalancesGlobal = {};
 
 async function login() { await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }); }
 async function logout() { await supabaseClient.auth.signOut(); window.location.reload(); }
@@ -32,7 +32,6 @@ async function initializeApp(user) {
     let userStatus = 'pending';
     
     try {
-        // מניעת נעילה עצמית: אם המשתמש הוא אתה, אנו מוודאים שהוא מעודכן כאדמין בדאטהבייס
         if (user.email === 'eyal.fidel@gmail.com' || user.email === 'eyal.fidel@mail.huji.ac.il') {
             await supabaseClient.from('profiles').upsert({ id: user.id, display_name: user.user_metadata.full_name, email: user.email, status: 'admin' });
             userStatus = 'admin';
@@ -49,55 +48,42 @@ async function initializeApp(user) {
         
         document.getElementById('user-email-display').innerText = user.email;
         
-        // עצירת תהליך אם המשתמש ממתין לאישור
         if (userStatus === 'pending') {
             document.getElementById('pending-user-email').innerText = user.email;
             showScreen('pending-screen');
             return;
         }
 
-        // אם המשתמש הוא מנהל מערכת, נטען את פאנל האישורים
         if (userStatus === 'admin') {
             document.getElementById('admin-panel').classList.remove('hidden');
             loadPendingUsers();
         }
 
-    } catch(e) { 
-        console.warn("שגיאה בשלב האתחול המאובטח", e); 
-    }
+    } catch(e) { console.warn("שגיאה באתחול", e); }
     
     await loadUserCars(true);
 }
 
-// פונקציות ניהול לאדמין
 async function loadPendingUsers() {
     const container = document.getElementById('admin-pending-list');
     const { data: pendingUsers } = await supabaseClient.from('profiles').select('*').eq('status', 'pending');
-    
     if (!pendingUsers || pendingUsers.length === 0) {
         container.innerHTML = 'אין בקשות הצטרפות ממתינות.';
         return;
     }
-    
     container.innerHTML = '';
     pendingUsers.forEach(u => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:white; padding:8px; border-radius:6px;';
-        div.innerHTML = `
-            <div><strong>${u.display_name || 'אנונימי'}</strong> (${u.email})</div>
-            <button onclick="approveUser('${u.id}')" class="success" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem;">אשר גישה</button>
-        `;
+        div.innerHTML = `<div><strong>${u.display_name || 'אנונימי'}</strong> (${u.email})</div><button onclick="approveUser('${u.id}')" class="success" style="width:auto; margin:0; padding:4px 10px; font-size:0.8rem;">אשר גישה</button>`;
         container.appendChild(div);
     });
 }
 
 async function approveUser(userId) {
     const { error } = await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', userId);
-    if (error) alert("שגיאה באישור המשתמש: " + error.message);
-    else {
-        alert("המשתמש אושר בהצלחה!");
-        loadPendingUsers();
-    }
+    if (error) alert("שגיאה: " + error.message);
+    else { alert("המשתמש אושר בהצלחה!"); loadPendingUsers(); }
 }
 
 async function editDisplayName() {
@@ -129,7 +115,6 @@ async function loadUserCars(isInitialLogin = false) {
     
     const validMembers = (members || []).filter(m => m.car_groups);
 
-    // מעקף חכם: אם יש למשתמש רק רכב אחד, נכנסים אליו ישירות בלי להציג את מסך הרשימה
     if (isInitialLogin && validMembers.length === 1 && !currentCar) {
         enterCar(validMembers[0].car_groups);
         return;
@@ -142,7 +127,6 @@ async function loadUserCars(isInitialLogin = false) {
         validMembers.forEach(member => {
             const div = document.createElement('div');
             div.className = 'car-list-item';
-            
             const infoDiv = document.createElement('div');
             infoDiv.style.flex = "1";
             infoDiv.innerHTML = `<strong>${member.car_groups.name || 'רכב ללא שם'}</strong>`;
@@ -271,12 +255,11 @@ async function submitSettlement() {
     loadDashboardData();
 }
 
-// אלגוריתם איפוס חובות אוטומטי (Compensating Settlements)
 async function triggerResetAllBalances() {
     if (!confirm("האם את בטוחה שברצונך לאפס את כל החובות הנוכחיים ברכב?\nהפעולה תייצר העברות מקזזות אוטומטיות שיביאו את כולם ל-0 ₪.")) return;
     
-    let debtors = [];  // מי שבמינוס (חייב כסף)
-    let creditors = []; // מי שבפלוס (מגיע לו כסף)
+    let debtors = [];
+    let creditors = [];
     
     for (let id in userBalancesGlobal) {
         let bal = userBalancesGlobal[id];
@@ -301,8 +284,8 @@ async function triggerResetAllBalances() {
             
             recordsToInsert.push({
                 group_id: currentCar.id,
-                paid_by: debtor.id, // החייב מעביר כסף
-                paid_to: creditor.id, // למי שמגיע לו
+                paid_by: debtor.id, 
+                paid_to: creditor.id,
                 amount: parseFloat(settleAmount.toFixed(2)),
                 note: "איפוס חובות תקופתי"
             });
@@ -326,7 +309,6 @@ async function triggerResetAllBalances() {
     }
 }
 
-// טעינה ועיבוד אנליטי של הדשבורד
 async function loadDashboardData() {
     if(!currentCar) return;
 
@@ -344,7 +326,6 @@ async function loadDashboardData() {
     const safeParticipants = participants.data || [];
     const safeSettlements = settlements.data || [];
 
-    // הצגת רשימת שותפות
     const membersHTML = currentCarMembers.map(m => {
         const p = m.profiles;
         return p.id === currentUser.id 
@@ -353,7 +334,6 @@ async function loadDashboardData() {
     }).join('');
     document.getElementById('dash-members-list').innerHTML = membersHTML;
 
-    // חישוב מד אוץ
     let lastRefuelOdo = safeRefuels.length > 0 ? Number(safeRefuels[0].odometer) : Number(currentCar.initial_odo);
     let tripsSinceRefuel = 0;
     const lastRefuelDate = safeRefuels.length > 0 ? new Date(safeRefuels[0].created_at) : new Date(0);
@@ -366,7 +346,6 @@ async function loadDashboardData() {
     calculatedOdometer = lastRefuelOdo + tripsSinceRefuel;
     document.getElementById('dash-current-odo').innerText = calculatedOdometer.toFixed(0);
 
-    // חישוב הוצאות וחלוקת מרחקים
     let totalCost = 0, totalTripsKm = 0;
     let paymentsByUser = {}, kmByUser = {};
 
@@ -404,7 +383,7 @@ async function loadDashboardData() {
     document.getElementById('dash-avg-cost').innerText = totalTripsKm > 0 ? `₪${avgCostPerKm.toFixed(2)}` : '0';
     document.getElementById('dash-total-km').innerText = totalTripsKm.toFixed(1);
 
-    // 1. טבלת מצב קופה (RTL)
+    // טבלת קופה (מימין לשמאל: קטגוריה, מצב, דלק, ק"מ)
     let balanceHTML = '<table><tr><th>שותפה</th><th>מצב כולל</th><th>שילמה דלק</th><th>נסעה (ק"מ)</th></tr>';
     currentCarMembers.forEach(m => {
         let id = m.profiles.id;
@@ -415,7 +394,7 @@ async function loadDashboardData() {
         let sRec = paymentsByUser[id] ? paymentsByUser[id].setReceived : 0;
         
         let finalBalance = fPaid - (km * avgCostPerKm) + sPaid - sRec;
-        userBalancesGlobal[id] = finalBalance; // עדכון גלובלי לאיפוס
+        userBalancesGlobal[id] = finalBalance;
         
         let color = finalBalance >= 0 ? 'var(--success)' : 'var(--danger)';
         balanceHTML += `<tr>
@@ -428,7 +407,7 @@ async function loadDashboardData() {
     balanceHTML += '</table>';
     document.getElementById('dash-balances').innerHTML = totalTripsKm > 0 ? balanceHTML : '<p>אין מספיק נתונים לחישוב.</p>';
 
-    // 2. טבלת קיזוזים (RTL)
+    // טבלת קיזוזים (מימין לשמאל)
     let setHTML = '<table><tr><th>תאריך</th><th>מעבירה</th><th>מקבלת</th><th>סכום</th><th>סוג פעולה</th></tr>';
     safeSettlements.slice(0, 5).forEach(s => {
         let by = currentCarMembers.find(m => m.profiles.id === s.paid_by)?.profiles?.display_name || 'אנונימית';
@@ -439,14 +418,13 @@ async function loadDashboardData() {
     setHTML += '</table>';
     document.getElementById('dash-settlements-list').innerHTML = safeSettlements.length > 0 ? setHTML : '<p>אין העברות כספים.</p>';
 
-    // 3. טבלת תדלוקים משודרגת אנליטית (RTL)
+    // טבלת תדלוקים (מימין לשמאל)
     let refuelsHTML = '<table><tr><th>תאריך</th><th>מתדלקת</th><th>עלות</th><th>ליטרים</th><th>₪ לליטר</th><th>ק"מ בטנק</th><th>₪ לק"מ</th><th>מד אוץ</th></tr>';
     safeRefuels.slice(0, 5).forEach((r, idx) => {
         let date = new Date(r.created_at).toLocaleDateString('he-IL');
         let name = r.paid_by === currentUser.id ? 'את/ה' : (currentCarMembers.find(m => m.profiles.id === r.paid_by)?.profiles?.display_name || '');
         let pricePerLiter = r.cost / r.liters;
         
-        // חישוב המרחק שנעשה על מכל הדלק הספציפי הזה
         let prevOdo = (idx === safeRefuels.length - 1) ? Number(currentCar.initial_odo) : Number(safeRefuels[idx + 1].odometer);
         let tankKm = r.odometer - prevOdo;
         let costPerKmInTank = tankKm > 0 ? (r.cost / tankKm) : 0;
@@ -460,13 +438,12 @@ async function loadDashboardData() {
     refuelsHTML += '</table>';
     document.getElementById('dash-refuels-list').innerHTML = safeRefuels.length > 0 ? refuelsHTML : '<p>אין תדלוקים.</p>';
 
-    // 4. טבלת נסיעות כולל שותפות (RTL)
+    // טבלת נסיעות (מימין לשמאל)
     let tripsHTML = '<table><tr><th>תאריך</th><th>נהגת</th><th>מרחק</th><th>מד אוץ</th><th>שותפות</th><th>הערה</th></tr>';
     safeTrips.slice(0, 6).forEach(t => {
         let date = new Date(t.created_at).toLocaleDateString('he-IL', {day: '2-digit', month: '2-digit'});
         let name = t.recorded_by === currentUser.id ? 'את/ה' : (currentCarMembers.find(m => m.profiles.id === t.recorded_by)?.profiles?.display_name || '');
         
-        // מציאת השותפות לנסיעה
         let tParts = safeParticipants.filter(p => p.trip_id === t.id);
         let partsNames = tParts.map(p => {
             if(p.user_id === currentUser.id) return "את/ה";
@@ -491,7 +468,7 @@ async function saveTrip() {
     
     if (endOdoInput !== "") {
         endOdo = parseFloat(endOdoInput);
-        if (endOdo < calculatedOdometer && !confirm(`מד האוץ שהזנת (${endOdo}) נמוך מהמד המחושב המעודכן (${calculatedOdometer.toFixed(0)}). להמשיך?`)) return;
+        if (endOdo < calculatedOdometer && !confirm(`מד האוץ שהזנת (${endOdo}) נמוך מהמד המחושב הנוכחי (${calculatedOdometer.toFixed(0)}). להמשיך?`)) return;
         distance = endOdo - calculatedOdometer;
         if (distance < 0) distance = 0;
     } else if (distanceInput !== "") {
@@ -541,7 +518,7 @@ async function saveRefuel() {
             if(selectedParticipants.length === 0) selectedParticipants.push(currentUser.id);
 
             const { data: newTrip } = await supabaseClient.from('trips').insert({ 
-                group_id: currentCar.id, recorded_by: currentUser.id, distance: gap, end_odo: odo, note: "נסיעה לתחנה (ק"מ אבודים)" 
+                group_id: currentCar.id, recorded_by: currentUser.id, distance: gap, end_odo: odo, note: "נסיעה לתחנה (ק\"מ אבודים)" 
             }).select().single();
             
             if(newTrip) {
@@ -575,7 +552,6 @@ function shareWhatsApp() {
     window.open(`https://wa.me/?text=${text}`, '_blank');
 }
 
-// ניהול אירועים מבוקר למניעת כפילויות רענון
 supabaseClient.auth.onAuthStateChange((event, session) => {
     if (session && session.user) {
         if (!currentUser || currentUser.id !== session.user.id) {
