@@ -18,6 +18,7 @@
         button { background: var(--primary); color: white; border: none; padding: 12px 20px; font-size: 1rem; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
         button.secondary { background: var(--border); color: var(--text); }
         button.danger { background: var(--danger); }
+        button.success { background: var(--success); }
         button.whatsapp { background: #25D366; }
         .full-screen-center { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         #app-screen { display: flex; flex-direction: column; height: 100%; }
@@ -36,7 +37,7 @@
         .stat-label { font-size: 0.8rem; color: var(--text-light); }
         
         /* עימוד טבלאות תקין מימין לשמאל */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; text-align: right; direction: rtl; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; text-align: right; direction: rtl; }
         th, td { padding: 8px 5px; border-bottom: 1px solid var(--border); text-align: right; }
         th { color: var(--text-light); font-weight: bold; }
         
@@ -57,6 +58,15 @@
         </div>
     </div>
 
+    <div id="pending-screen" class="full-screen-center hidden">
+        <div class="card">
+            <h2>חשבונך ממתין לאישור ⏳</h2>
+            <p style="color: var(--text-light); margin-top: 10px;">על מנת להבטיח את אבטחת הנתונים, מנהל המערכת צריך לאשר את הגישה שלך לאפליקציה.</p>
+            <p style="font-weight: bold; margin-top: 15px;" id="pending-user-email"></p>
+            <button onclick="logout()" class="danger" style="margin-top: 20px;">התנתקות</button>
+        </div>
+    </div>
+
     <div id="cars-screen" class="full-screen-center hidden" style="justify-content: flex-start; padding-top: 40px;">
         <div style="width: 100%; max-width: 400px;">
             <div class="card" style="margin-bottom: 20px; padding: 15px; text-align: right; display: flex; justify-content: space-between; align-items: center;">
@@ -69,6 +79,12 @@
                     <button onclick="logout()" class="danger" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">התנתקות</button>
                 </div>
             </div>
+
+            <div id="admin-panel" class="form-group hidden" style="border: 2px solid var(--primary); background: #f0f7ff;">
+                <h3 style="color: var(--primary);">ניהול בקשות הצטרפות 🔐</h3>
+                <div id="admin-pending-list" style="font-size: 0.9rem; color: var(--text-light);">אין בקשות ממתינות.</div>
+            </div>
+
             <h2>הרכבים שלי</h2>
             <div id="my-cars-list">טוען...</div>
             <button onclick="showCreateCarForm()">+ הוספת רכב חדש</button>
@@ -103,9 +119,12 @@
                 <div class="form-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h3 style="margin: 0;">מצב קופה (מינ/פלוס) 💰</h3>
-                        <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז חוב 💸</button>
+                        <div style="display: flex; gap: 5px;">
+                            <button onclick="showSettleForm()" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">קיזוז חוב 💸</button>
+                            <button onclick="triggerResetAllBalances()" class="danger" style="width: auto; margin: 0; padding: 6px 12px; font-size: 0.8rem;">איפוס חובות 🔄</button>
+                        </div>
                     </div>
-                    <div id="dash-balances" style="overflow-x: auto;">טוען נתונים...</div>
+                    <div id="dash-balances">טוען נתונים...</div>
                     
                     <div id="settle-form-container" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
                         <h4>תיעוד העברת כסף</h4>
@@ -132,12 +151,12 @@
                 </div>
 
                 <div class="form-group">
-                    <h3>העברות כספים (קיזוזים) 💸</h3>
+                    <h3>העברות כספים (קיזוזים ואיפוסים) 💸</h3>
                     <div id="dash-settlements-list" style="overflow-x: auto;"></div>
                 </div>
 
                 <div class="form-group">
-                    <h3>תדלוקים אחרונים ⛽</h3>
+                    <h3>תדלוקים ואנליטיקת מכלים ⛽</h3>
                     <div id="dash-refuels-list" style="overflow-x: auto;"></div>
                 </div>
 
@@ -151,16 +170,16 @@
                 <h2>תיעוד נסיעה 🚗</h2>
                 
                 <div class="form-group">
-                    <label style="color: var(--primary); margin-bottom: 15px;">הזיני מרחק או קריאת מד אוץ סופית (אחד מהם):</label>
+                    <label style="color: var(--primary); margin-bottom: 15px;">מלאי את המרחק שנסעת או את מד האוץ בסיום (השדה שתמלאי יקבע):</label>
                     
                     <div>
-                        <label>מרחק שנסעת (בק"מ):</label>
+                        <label>מרחק נסיעה בפועל (בק"מ):</label>
                         <input type="number" id="trip-distance" placeholder="למשל: 45.5" step="0.1">
                     </div>
                     
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border);">
-                        <label>קריאת מד אוץ בסיום הנסיעה:</label>
-                        <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal; margin-bottom: 4px;" id="current-odo-hint">מד אוץ קודם: מחושב...</label>
+                        <label>או קריאת מד אוץ בסיום הנסיעה:</label>
+                        <label style="font-size: 0.8rem; color: var(--text-light); font-weight: normal; margin-bottom: 4px;" id="current-odo-hint">מד אוץ קודם: -</label>
                         <input type="number" id="trip-end-odo" placeholder="למשל: 45200">
                     </div>
                 </div>
@@ -171,7 +190,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן)</label>
+                    <label>מי השתתפה בנסיעה? (העלות תתחלק ביניכן שווה בשווה)</label>
                     <div id="trip-participants-list" class="checkbox-group"></div>
                 </div>
 
@@ -196,7 +215,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>מי נסעה ברכב לתחנת הדלק? (לחלוקת פער קילומטרים במידה וקיים)</label>
+                    <label>מי נסעה ברכב לתחנת הדלק? (במידה וקיים פער קילומטרים אבודים, עלות הנסיעה לתחנה תתחלק בין המסומנות)</label>
                     <div id="refuel-participants-list" class="checkbox-group"></div>
                 </div>
 
